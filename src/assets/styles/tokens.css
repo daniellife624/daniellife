@@ -1,0 +1,51 @@
+:root {
+  /* ── Colors ── */
+  --color-primary:      #E8C13A;
+  --color-primary-bg:   #FDF8D8;
+  --color-secondary:    #7A8C6E;
+  --color-tertiary:     #C17055;
+
+  --color-ink-1:        #303030;
+  --color-ink-2:        #5e5e5e;
+  --color-ink-3:        #919191;
+  --color-ink-4:        #c6c6c6;
+  --color-white:        #ffffff;
+
+  /* ── Typography ── */
+  --font-display:  'DM Serif Display', serif;
+  --font-body:     'Inter', sans-serif;
+  --font-cjk:      'Noto Serif TC', serif;
+  --font-mono:     'JetBrains Mono', monospace;
+
+  /* ── Spacing ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  24px;
+  --space-6:  32px;
+  --space-7:  48px;
+  --space-8:  64px;
+  --space-9:  96px;
+  --space-10: 128px;
+
+  /* ── Border Radius ── */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-full: 9999px;
+
+  /* ── Shadow ── */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* ── Breakpoints (for reference) ── */
+  /* Desktop  : ≥ 1280px */
+  /* Tablet   : 768px – 1279px */
+  /* Mobile   : < 768px */
+
+  /* ── Layout ── */
+  --container-max: 1280px;
+  --navbar-height: 60px;
+}

@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink-1);
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+/* 中文內容套用 CJK 字型 */
+:lang(zh) {
+  font-family: var(--font-cjk);
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
