@@ -2,22 +2,23 @@
   <div class="social">
     <div class="social__inner">
 
-      <!-- Stage 1: ESG / SDGs Tab -->
-      <div class="tab-group">
-        <button
-          v-for="t in stage1Tabs"
-          :key="t.key"
-          class="tab-pill"
-          :class="{ 'tab-pill--active-yellow': stage1 === t.key }"
-          @click="stage1 = t.key as typeof stage1"
-        >{{ t.label }}</button>
-      </div>
+      <!-- Stage 1 + Stage 2 tabs — stacked vertically -->
+      <div class="tab-row">
+        <div class="tab-group">
+          <button
+            v-for="t in stage1Tabs"
+            :key="t.key"
+            class="tab-pill"
+            :class="{ 'tab-pill--active-yellow': stage1 === t.key }"
+            @click="stage1 = t.key as typeof stage1"
+          >{{ t.label }}</button>
+        </div>
 
-      <!-- Stage 2: E / S / G sub-tabs (only for ESG) -->
-      <div v-if="stage1 === 'esg'" class="tab-group tab-group--sub">
-        <button class="tab-pill" :class="{ 'tab-pill--active-yellow': esgSub === 'E' }" @click="esgSub = 'E'">E</button>
-        <button class="tab-pill" :class="{ 'tab-pill--active-green': esgSub === 'S' }"  @click="esgSub = 'S'">S</button>
-        <button class="tab-pill" :class="{ 'tab-pill--active-terra': esgSub === 'G' }"  @click="esgSub = 'G'">G</button>
+        <div v-if="stage1 === 'esg'" class="tab-group">
+          <button class="tab-pill" :class="{ 'tab-pill--active-yellow': esgSub === 'E' }" @click="esgSub = 'E'">E</button>
+          <button class="tab-pill" :class="{ 'tab-pill--active-green': esgSub === 'S' }"  @click="esgSub = 'S'">S</button>
+          <button class="tab-pill" :class="{ 'tab-pill--active-terra': esgSub === 'G' }"  @click="esgSub = 'G'">G</button>
+        </div>
       </div>
 
       <div class="social__body">
@@ -146,14 +147,20 @@ onMounted(async () => {
 .social__inner { max-width: var(--container-max); margin: 0 auto; }
 
 /* Tabs */
+.tab-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
 .tab-group {
   display: inline-flex;
   border: 1px solid var(--color-ink-4);
   border-radius: var(--radius-full);
   overflow: hidden;
-  margin-bottom: var(--space-4);
 }
-.tab-group--sub { margin-bottom: var(--space-5); }
 
 .tab-pill {
   padding: var(--space-2) var(--space-5);

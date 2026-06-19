@@ -12,7 +12,7 @@
   background-color: var(--color-ink-1);
   color: var(--color-ink-3);
   text-align: center;
-  padding: var(--space-5);
+  padding: var(--space-3) var(--space-6);
   font-size: 13px;
   font-family: var(--font-body);
 }

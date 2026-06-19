@@ -98,7 +98,8 @@ onMounted(async () => {
     (entries) => {
       if (entries[0].isIntersecting) {
         animateBars.value = true
-        observer.disconnect()
+      } else {
+        animateBars.value = false
       }
     },
     { threshold: 0.3 },

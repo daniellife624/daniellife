@@ -6,11 +6,17 @@
       </div>
 
       <div class="academic__chart-wrap">
-        <svg class="academic__svg" viewBox="0 0 900 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          ref="svgEl"
+          class="academic__svg"
+          viewBox="0 0 900 300"
+          preserveAspectRatio="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path
+            ref="pathEl"
             class="academic__path"
-            :class="{ 'academic__path--drawn': isVisible }"
-            d="M 50,270 C 120,260 200,200 290,165 C 380,130 440,110 510,80 C 580,50 680,30 860,18"
+            d="M 50,265 C 95,248 140,200 182,210 C 224,220 265,265 314,250 C 363,235 403,152 455,140 C 507,128 540,172 588,158 C 636,144 706,50 768,36 C 818,22 850,14 884,12"
             fill="none"
             stroke="#E8C13A"
             stroke-width="3"
@@ -27,11 +33,12 @@
             stroke-width="3"
             class="academic__dot"
             :class="{ 'academic__dot--visible': isVisible }"
-            :style="{ transitionDelay: `${0.5 + i * 0.4}s` }"
+            :style="{ transitionDelay: `${0.6 + i * 0.4}s` }"
           />
         </svg>
 
-        <div class="academic__car" :class="{ 'academic__car--moving': isVisible }">🚗</div>
+        <!-- Car follows path via JS; no CSS transition -->
+        <div ref="carEl" class="academic__car">🚗</div>
       </div>
 
       <div class="academic__cards">
@@ -40,7 +47,7 @@
           :key="`card-${m.id}`"
           class="academic-card"
           :class="{ 'academic-card--visible': isVisible }"
-          :style="{ transitionDelay: `${0.7 + i * 0.25}s` }"
+          :style="{ transitionDelay: `${0.8 + i * 0.25}s` }"
         >
           <div class="academic-card__school">{{ m.school }}</div>
           <div class="academic-card__major">{{ m.major }}</div>
@@ -57,34 +64,138 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { getAcademicMilestones } from '@/api/homepage'
 import type { AcademicMilestone } from '@/types/homepage'
 
 const sectionEl = ref<HTMLElement | null>(null)
+const svgEl     = ref<SVGSVGElement | null>(null)
+const pathEl    = ref<SVGPathElement | null>(null)
+const carEl     = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
+
 const milestones = ref<(AcademicMilestone & { cx: number; cy: number })[]>([])
 
+// Milestone positions — each is the endpoint of a path segment
 const positions = [
-  { cx: 290, cy: 165 },
-  { cx: 510, cy: 80 },
-  { cx: 860, cy: 18 },
+  { cx: 455, cy: 140 },
+  { cx: 768, cy:  36 },
+  { cx: 884, cy:  12 },
 ]
+
+const DURATION = 2600   // ms — matches visual expectation
+
+let rafId     = 0
+let animStart: number | null = null
+let observer: IntersectionObserver | null = null
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+
+function resetAnimation() {
+  cancelAnimationFrame(rafId)
+  rafId = 0
+  animStart = null
+  isVisible.value = false
+
+  const path = pathEl.value
+  if (path) {
+    const len = path.getTotalLength()
+    path.style.strokeDasharray  = `${len}`
+    path.style.strokeDashoffset = `${len}`
+  }
+  const car = carEl.value
+  if (car) {
+    car.style.opacity   = '0'
+    car.style.left      = '5.56%'   // 50/900*100
+    car.style.top       = '88.33%'  // 265/300*100
+    car.style.transform = 'translate(-50%, -50%)'
+  }
+}
+
+function tick(ts: number) {
+  if (animStart === null) animStart = ts
+  const t     = Math.min((ts - animStart) / DURATION, 1)
+  const eased = easeInOut(t)
+
+  const path = pathEl.value
+  const car  = carEl.value
+  const svg  = svgEl.value
+  if (!path || !car || !svg) return
+
+  const totalLen    = path.getTotalLength()
+  const currentLen  = eased * totalLen
+
+  // Animate path drawing (replaces CSS transition)
+  path.style.strokeDashoffset = `${totalLen - currentLen}`
+
+  // Car position in SVG user units → CSS percentage of container
+  const pt     = path.getPointAtLength(currentLen)
+  const ptNext = path.getPointAtLength(Math.min(currentLen + 5, totalLen))
+
+  // Visual angle: account for preserveAspectRatio="none" stretching
+  const wrap  = svg.parentElement as HTMLElement
+  const wrapW = wrap.clientWidth  || 900
+  const wrapH = wrap.clientHeight || 300
+  const dx    = (ptNext.x - pt.x) * (wrapW / 900)
+  const dy    = (ptNext.y - pt.y) * (wrapH / 300)
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI
+
+  car.style.left      = `${(pt.x / 900) * 100}%`
+  car.style.top       = `${(pt.y / 300) * 100}%`
+  car.style.transform = `translate(-50%, -50%) rotate(${angle}deg) scaleX(-1)`
+
+  if (t < 1) {
+    rafId = requestAnimationFrame(tick)
+  }
+}
+
+function startAnimation() {
+  cancelAnimationFrame(rafId)
+  animStart = null
+
+  const path = pathEl.value
+  if (path) {
+    const len = path.getTotalLength()
+    path.style.strokeDasharray  = `${len}`
+    path.style.strokeDashoffset = `${len}`
+  }
+  const car = carEl.value
+  if (car) car.style.opacity = '1'
+
+  isVisible.value = true          // reveals dots + cards via CSS
+  rafId = requestAnimationFrame(tick)
+}
 
 onMounted(async () => {
   const data = await getAcademicMilestones()
   milestones.value = data.map((m, i) => ({ ...m, ...positions[i] }))
 
-  const observer = new IntersectionObserver(
+  // Initialise path to hidden (getTotalLength available after mount)
+  const path = pathEl.value
+  if (path) {
+    const len = path.getTotalLength()
+    path.style.strokeDasharray  = `${len}`
+    path.style.strokeDashoffset = `${len}`
+  }
+
+  observer = new IntersectionObserver(
     (entries) => {
       if (entries[0].isIntersecting) {
-        isVisible.value = true
-        observer.disconnect()
+        startAnimation()
+      } else {
+        resetAnimation()
       }
     },
     { threshold: 0.2 },
   )
   if (sectionEl.value) observer.observe(sectionEl.value)
+})
+
+onUnmounted(() => {
+  cancelAnimationFrame(rafId)
+  observer?.disconnect()
 })
 </script>
 
@@ -103,6 +214,15 @@ onMounted(async () => {
 
 .academic__header {
   margin-bottom: var(--space-5);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.academic__subtitle {
+  font-family: var(--font-cjk);
+  font-size: 12px;
+  color: var(--color-ink-3);
 }
 
 .section-title {
@@ -125,18 +245,13 @@ onMounted(async () => {
   height: 100%;
 }
 
-/* 曲線繪製動畫 */
+/* Path — dasharray/dashoffset set by JS; no CSS transition needed */
 .academic__path {
-  stroke-dasharray: 1500;
-  stroke-dashoffset: 1500;
-  transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
+  stroke-dasharray: 3000;   /* fallback until JS overrides */
+  stroke-dashoffset: 3000;
 }
 
-.academic__path--drawn {
-  stroke-dashoffset: 0;
-}
-
-/* 圓點 */
+/* Milestone dots */
 .academic__dot {
   opacity: 0;
   transform-origin: center;
@@ -149,21 +264,20 @@ onMounted(async () => {
   transform: scale(1);
 }
 
-/* 汽車 */
+/* Car — positioned and rotated entirely by JS */
 .academic__car {
   position: absolute;
-  bottom: 8%;
-  left: 3%;
-  font-size: 20px;
-  transition: left 2s cubic-bezier(0.4, 0, 0.2, 1), bottom 2s cubic-bezier(0.4, 0, 0.2, 1);
+  left: 5.56%;
+  top: 88.33%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
 }
 
-.academic__car--moving {
-  left: 92%;
-  bottom: 88%;
-}
-
-/* 三欄卡片 */
+/* Cards */
 .academic__cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -243,7 +357,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 767px) {
-  .academic__cards { grid-template-columns: 1fr; }
+  .academic__cards      { grid-template-columns: 1fr; }
   .academic__chart-wrap { height: 160px; }
 }
 </style>

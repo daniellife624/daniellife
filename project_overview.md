@@ -71,19 +71,20 @@
 src/
 ├── assets/
 │   └── styles/
-│       └── tokens.css          # Design Tokens（全域 CSS 變數）
+│       └── tokens.css              # Design Tokens（全域 CSS 變數）
 │
-├── api/                        # Mock API 層（TODO: 替換為 apiFetch）
-│   ├── client.ts               # apiFetch<T> 通用 fetch 包裝
-│   ├── homepage.ts             # 首頁 5 支 API
-│   ├── activities.ts           # 活動 / 旅遊 API
-│   ├── social.ts               # 社會參與 API
-│   ├── literature.ts           # 文學天地 API
-│   ├── market.ts               # 市場消息 API（含分頁）
-│   ├── finance.ts              # 理財規劃 API
-│   └── thesis.ts               # 論文統整 API（CRUD）
+├── api/                            # Mock API 層（TODO: 替換為 apiFetch）
+│   ├── client.ts                   # apiFetch<T> 通用 fetch 包裝
+│   ├── auth.ts                     # mockLogin()（讀取 .env.local 驗證）
+│   ├── homepage.ts                 # 首頁 5 支 API
+│   ├── activities.ts               # 活動 / 旅遊 API
+│   ├── social.ts                   # 社會參與 API
+│   ├── literature.ts               # 文學天地 API
+│   ├── market.ts                   # 市場消息 API（新聞分頁）
+│   ├── finance.ts                  # 理財規劃 API
+│   └── thesis.ts                   # 論文統整 API（CRUD）
 │
-├── types/                      # TypeScript 介面定義
+├── types/                          # TypeScript 介面定義
 │   ├── homepage.ts
 │   ├── activities.ts
 │   ├── social.ts
@@ -93,37 +94,39 @@ src/
 │   └── thesis.ts
 │
 ├── stores/
-│   └── auth.ts                 # Pinia：isLoggedIn / user / login() / logout()
+│   └── auth.ts                     # Pinia：isLoggedIn / user / login() / logout()
 │
 ├── router/
-│   └── index.ts                # 路由表 + beforeEach 權限守衛
+│   └── index.ts                    # 路由表 + beforeEach 權限守衛
 │
 ├── components/
 │   ├── common/
-│   │   ├── AppNavbar.vue       # 固定頂部導覽列
-│   │   └── AppFooter.vue       # 頁尾
+│   │   ├── AppNavbar.vue           # 固定頂部導覽列（Logo 圓形）
+│   │   └── AppFooter.vue           # 頁尾（精簡 padding）
+│   ├── admin/
+│   │   └── AdminTable.vue          # 通用 CRUD 表格元件（props: title/columns/rows/ids）
 │   └── homepage/
-│       ├── HeroCard.vue        # 個人卡片（Hero Section）
-│       ├── InternSection.vue   # 實習經歷橫向滾動卡
-│       ├── ProjectSection.vue  # 作品集 2×2 Grid + 3 Filter
-│       ├── CertSection.vue     # 專業證照 3 欄 + 進度條動畫
-│       ├── AcademicSection.vue # 學業歷程 SVG 曲線 + 車子動畫
-│       └── FuturePlanSection.vue # 近 3 年規劃金字塔
+│       ├── HeroCard.vue            # 個人卡片 3 欄（左資訊 / 中照片圈 / 右格言）
+│       ├── InternSection.vue       # 實習橫向 slider + Teleport 詳情 Modal
+│       ├── ProjectSection.vue      # 作品集 2×2 Grid + 3 Filter
+│       ├── CertSection.vue         # 專業證照 3 欄 + 進度條動畫
+│       ├── AcademicSection.vue     # 學業歷程 SVG 曲線 + 車子動畫
+│       └── FuturePlanSection.vue   # 近 5 年規劃金字塔
 │
 ├── views/
-│   ├── HomeView.vue            # 首頁（組裝 6 個 Homepage 元件）
-│   ├── ActivitiesView.vue      # 課外活動（領導 + 社團 + 旅遊地圖）
-│   ├── SocialView.vue          # 社會參與（ESG / SDGs 篩選）
-│   ├── LiteratureView.vue      # 文學天地（LED 火車時間軸 + 跑馬燈 + 作品）
-│   ├── MarketView.vue          # 市場消息（新聞列表 + AI 聊天室）
-│   ├── NewsView.vue            # 總經新聞（TradingView 預留 + 總經指標）
-│   ├── FinanceView.vue         # 理財規劃（指標卡 + 甜甜圈圖 + 持股表）★ 需登入
-│   ├── ThesisView.vue          # 論文統整（筆記 + Kanban + 文獻表）★ 需登入
-│   ├── AdminView.vue           # 功能管理（殼，待開發）★ 需登入
-│   ├── LoginView.vue           # 登入（殼，待開發，路徑 /danieladmin）
-│   └── ForbiddenView.vue       # 403 未授權頁面
+│   ├── HomeView.vue                # 首頁（組裝 6 個 Homepage 元件）
+│   ├── ActivitiesView.vue          # 課外活動（領導 + 社團 + 旅遊地圖 + 2 個 Teleport Modal）
+│   ├── SocialView.vue              # 社會參與（ESG / SDGs 篩選）
+│   ├── LiteratureView.vue          # 文學天地（LED 火車時間軸 + 跑馬燈 + 作品）
+│   ├── MarketView.vue              # 市場消息（TradingView 佔位 + 總經指標 4 欄）
+│   ├── NewsView.vue                # 總經新聞（新聞分頁 + AI 聊天室）
+│   ├── FinanceView.vue             # 理財規劃（指標卡 + SVG 甜甜圈 + 持股表）★ 需登入
+│   ├── ThesisView.vue              # 論文統整（筆記 + Kanban + 文獻表）★ 需登入
+│   ├── AdminView.vue               # 功能管理（深色側欄 + AdminTable CRUD）★ 需登入
+│   ├── LoginView.vue               # 登入（/danieladmin，讀取 .env.local 驗證）
+│   └── ForbiddenView.vue           # 403 未授權頁面
 │
-└── App.vue                     # AppNavbar + RouterView + AppFooter
+└── App.vue                         # AppNavbar + RouterView + AppFooter
 ```
 
 ---
@@ -156,6 +159,15 @@ src/
 ```ts
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T>
 // 讀取 VITE_API_URL 環境變數；後端上線後取消 Mock 直接用此函式
+```
+
+### `src/api/auth.ts`
+
+```ts
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? 'admin@daniellife.com'
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? 'changeme'
+export async function mockLogin(email, password): Promise<{ ok: boolean; name: string; email: string }>
+// TODO: 後端上線後改為 POST /api/auth/login → { token }
 ```
 
 ### 各 API 模組
@@ -254,17 +266,28 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 由 6 個 Homepage 元件垂直堆疊：
 
-#### HeroCard
-- 個人照片區 + 姓名 / 職稱 / 標語卡片
-- `.hero__inner`：`background: var(--color-primary-bg)` + `border: 1px solid var(--color-primary)`
-- `.hero__motto-card`：白色背景
-- 社群連結 icon：目前以 18×18 黑色方塊佔位（待換成真實 SVG）
+#### HeroCard（3 欄版面）
+
+```
+左欄                中欄                         右欄
+──────              ──────────────────           ──────────────────
+姓名（26px）        96px 圓形照片×2              白色格言卡片
+台北 / 男 / 特質   （background: ink-2）         「你不需要跟隨著才能開始
+職務標籤列          社群連結 icon 列              但至少要真心嘗試」
+```
+
+- RWD ≤900px：隱藏中欄；≤767px：中欄重新顯示（堆疊）
+- 社群 icon：目前以 18×18 黑色方塊佔位（待換真實 SVG）
 
 #### InternSection
-- 橫向滾動 slider（`scroll-snap`）+ 右側箭頭按鈕（`scrollBy 320px`）
-- 每張卡：公司 / 部門職位 / 照片佔位（`#f2ebe4`）/ 貢獻 3 行截斷 / 查看更多按鈕
+
+- 橫向滾動 slider（`scroll-snap`）+ 右側 `›` 箭頭（`scrollBy 320px`）
+- Header 右側：「由新到舊 由左到右」排序提示
+- 每張卡：公司 / 部門職位 / 照片佔位（`background: var(--color-primary)` 黃色）/ 貢獻 3 行截斷 / 查看更多按鈕
+- **查看更多**：`@click` 觸發 Teleport Modal，顯示公司、部門、職稱、期間、照片佔位、完整貢獻文字
 
 #### ProjectSection
+
 - 3 個自訂 Dropdown 篩選（類型 / 技術 / 人數），樣式：`appearance: none` + 定位 `∨`
 - 2×2 CSS Grid
 - Card 背景：`code`=白色、`uiux`=`primary-bg`、`finance`=`#eef1ec`
@@ -272,26 +295,32 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 - STAR 圓圈 badge 顏色與卡片類型一致
 
 #### CertSection
+
 - 3 欄版面，欄間 1px 分隔線
 - 語言欄：進度條動畫（IntersectionObserver 觸發，`width: 0 → lang.pct%`，1.2s ease）
 - 財會 / 資訊欄：分類列表 + 方形 dot（已有=secondary green 填滿）
 
 #### AcademicSection
+
 - SVG `viewBox="0 0 900 300"`，立方貝塞爾曲線：
   `M 50,270 C 120,260 200,200 290,165 C 380,130 440,110 510,80 C 580,50 680,30 860,18`
+- Header 副標題：「更多詳情請至頻道頁面後查看造訪功能」
 - Path 動畫：`stroke-dasharray: 1500; stroke-dashoffset: 1500 → 0`（`.academic__path--drawn` class 觸發）
 - 🚗 emoji：`bottom: 8%; left: 3% → bottom: 88%; left: 92%` CSS transition
 - 3 個節點圓圈（座標 290,165 / 510,80 / 860,18），staggered delay 出現
 - 3 張 Info 卡：`opacity: 0; translateY(16px) → 可見` on IntersectionObserver
 
 #### FuturePlanSection
-- Subtitle：「由於 AI 世代更迭迅速，先以近 3 年規劃為主」
+
+- Subtitle：「由於 AI 時代迭代迅速，先以近 5 年規劃為主」
 - 金字塔三行（由寬到窄）：
+
   | phase | 寬度 | margin-left | 背景 / 邊框 |
   |-------|------|-------------|------------|
   | `mid` | 340px | 0 | `#fdf8d8` / `#E8C13A` |
   | `mid-short` | 260px | 40px | `#eef1ec` / `#7A8C6E` |
   | `short` | 180px | 80px | `#f8eee9` / `#C17055` |
+
 - 每行右側：水平線 + bullet 條列
 
 ---
@@ -300,11 +329,12 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 **領導 / 社團經驗**
 - 卡片：左（標題、服務機構、期間、貢獻 3 行截斷）+ 右（2 張照片 Grid、查看更多按鈕）
-- Teleport Modal 顯示完整內容
+- Teleport Modal：顯示完整內容（title、organization、period、2 照片佔位、contribution）
 
 **造訪過國家**
 - 圓形地圖佔位（360×360，`border-radius: 50%`，待整合真實地圖）
-- 5 洲別卡片 2×2 Grid：
+- 5 洲別卡片 2×2 Grid，每個 entry 可點擊（hover 淺黃色 highlight）
+
   | 洲 | 顏色 |
   |----|------|
   | Europe | `#2563eb` |
@@ -312,6 +342,9 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
   | Africa | `var(--color-ink-1)` |
   | Australia | `#0d9488` |
   | Americas | `var(--color-tertiary)` |
+
+- 點擊國家條目 → Teleport Travel Modal：顯示 country、city、continent、visitedAt、companions?、activities?、purchases?、journal?
+- 若尚未填寫見聞，顯示提示文字「尚未填寫旅行見聞，可至後台新增」
 
 ---
 
@@ -338,6 +371,7 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 **文學作品 Grid（2 欄）**
 - 每張卡：標題列（閱讀全文按鈕）+ 4 個 metadata 行
+
   | Row | 背景 |
   |-----|------|
   | 幾歲撰寫 | `primary-bg`（黃） |
@@ -349,35 +383,39 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 ### 8.5 市場消息 `/market` — MarketView
 
-**左側新聞面板**
-- 搜尋列（Enter 或按鈕觸發 `doSearch()`）
-- Region Tab：美股 US / 台灣 TAIWAN（底部 border-bottom 2px yellow active）
-- 新聞卡（source badge + 時間 + 標題 + 摘要 2 行截斷）
-- 分頁按鈕（‹ 1 2 3 ›）
+**股市行情**
+- TradingView 美股 / 台股走勢圖：2 個 260px dashed 佔位框（待整合 TradingView Widget）
 
-**右側 AI 聊天室（UI only）**
-- 標題：「AI 財經助理 / GPT-4o · GitHub Models」
-- 訊息泡泡：user = `ink-1`（深色）/ assistant = `primary-bg`（黃色）
-- sticky `top: var(--space-6)`，高度固定 600px
-- `// TODO: call GitHub Models API (GPT-4o)` 佔位
+**總體經濟指標 4 欄卡片**
+- 外匯 Forex：USD/TWD、USD/JPY、EUR/USD、USD/CNH，up=`#16a34a` / down=`#dc2626`
+- 美債殖利率：2Y / 5Y / 10Y / 30Y（單位 bp）
+- GDP 成長率：US / TW / JP / CN
+- CPI 通膨率：US / TW / JP / CN（≥2% 為 up 色）
+
+- 底部 Mock 資料免責聲明
 
 ---
 
 ### 8.6 總經新聞 `/news` — NewsView
 
-- TradingView 股票走勢圖：2 個 260px dashed 佔位框（待整合 TradingView Widget）
-- 總體經濟指標 4 欄卡片：
-  - 外匯 Forex：4 個匯率對，up=`#16a34a` / down=`#dc2626`
-  - 美債殖利率：2Y / 5Y / 10Y / 30Y
-  - GDP 成長率：US / TW / JP / CN
-  - CPI 通膨率：US / TW / JP / CN（≥2% 為 up 色）
-- 底部 Mock 資料免責聲明
+**左側新聞面板**
+- 搜尋列（Enter 或按鈕觸發 `doSearch()`）
+- Region Tab：美股 US / 台灣 TAIWAN（底部 `border-bottom: 2px` yellow active）
+- 新聞卡：source badge + 時間 + 標題 + 摘要 2 行截斷
+- 分頁按鈕（‹ 1 2 3 ›），PAGE_SIZE = 5
+
+**右側 AI 聊天室（UI only）**
+- 標題：「AI 財經助理 / GPT-4o · GitHub Models」
+- 訊息泡泡：user = `ink-1`（深色）/ assistant = `primary-bg`（黃色）
+- `position: sticky; top: var(--space-6)`，高度固定 600px
+- `// TODO: call GitHub Models API (GPT-4o)` 佔位
 
 ---
 
 ### 8.7 理財規劃 `/finance` — FinanceView（需登入）
 
 **5 個指標卡（彩色頂部邊框）**
+
 | 卡片 | 邊框色 |
 |------|--------|
 | TWD 總市值 | `primary` |
@@ -406,6 +444,7 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 - `saveThesisNote()` Mock 本地更新（待接後端 PUT API）
 
 **論文想法 Kanban（3 欄）**
+
 | 欄 | Header 背景 / 邊框 |
 |----|-------------------|
 | 待審核 pending | `primary-bg` / primary yellow |
@@ -421,6 +460,67 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 ---
 
+### 8.9 功能管理 `/admin` — AdminView（需登入）
+
+**版面**
+- 深色左側欄（`background: var(--color-ink-1)`）：7 個區塊切換按鈕 + 登出
+- 右側主區：使用 `AdminTable` 元件顯示各區塊資料
+
+**7 個資料區塊**
+
+| 區塊 | 資料來源 |
+|------|---------|
+| 實習經歷 | `getInternships()` |
+| 作品集 | `getProjects()` |
+| 課外活動 | `getExperiences()` |
+| 社會參與 | `getSocialActivities()` |
+| 文學作品 | `getLiteratureWorks()` |
+| 論文文獻 | `getThesisPapers()` |
+| 持股資料 | `getHoldings()` |
+
+**AdminTable 元件（`src/components/admin/AdminTable.vue`）**
+
+```ts
+Props:
+  title:   string        // 區塊標題
+  columns: string[]      // 欄位名稱陣列
+  rows:    string[][]    // 顯示資料（已格式化為字串）
+  ids:     number[]      // 對應每列的 id
+
+Emits:
+  add: []                // 點擊「新增」
+  edit: [id: number]     // 點擊「編輯」
+  delete: [id: number]   // 點擊「刪除」
+```
+
+**Modal 動態欄位（`fieldMap`）**
+- 每個區塊有對應的 `fieldMap`，定義哪些欄位顯示在新增/編輯 Modal 中
+- `saveModal()` 和 `deleteItem()` 都有 `// TODO: call apiFetch` 佔位
+
+**登出**
+- `auth.logout()` → 導向 `/`
+
+---
+
+### 8.10 登入 `/danieladmin` — LoginView
+
+- Email + 密碼表單
+- 黃色邊框卡片，`background: var(--color-primary-bg)`
+- 呼叫 `mockLogin(email, password)`（讀取 `.env.local` 中的 `VITE_ADMIN_EMAIL` / `VITE_ADMIN_PASSWORD`）
+- 登入成功 → `auth.login()` → redirect `/admin`
+- 登入失敗 → 顯示錯誤訊息
+- 底部「← 回到首頁」連結
+
+---
+
+### 8.11 未授權 `/403` — ForbiddenView
+
+- 大型「403」字樣（96px，`font-family: var(--font-display)`，`color: var(--color-primary)`）
+- 副標題、說明文字
+- 兩個按鈕：前往登入（`/danieladmin`）、回首頁（`/`）
+
+---
+
 ## 九、Auth 與導覽列
 
 ### `stores/auth.ts`
@@ -430,10 +530,13 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 ### AppNavbar
 - 固定頂部，`background: var(--color-primary)`（黃色）
-- Logo：白色方塊 + "D" 字
+- Logo：**圓形**（`border-radius: 50%`，`border: 2px solid var(--color-white)`），背景白色，文字 "D"（`color: var(--color-ink-1)`）
 - 未登入：顯示 5 個公開連結
 - 已登入：額外顯示 論文統整 / 理財規劃 / 功能管理
 - RWD：< 768px 隱藏桌面 Nav，顯示漢堡選單
+
+### AppFooter
+- `background: var(--color-ink-1)`，`padding: var(--space-3) var(--space-6)`（精簡）
 
 ---
 
@@ -443,29 +546,31 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 
 - [x] Design Token 系統（`tokens.css`）
 - [x] TypeScript 介面定義（7 個型別檔）
-- [x] Mock API 層（7 個模組，含 `client.ts`）
+- [x] Mock API 層（8 個模組，含 `client.ts` + `auth.ts`）
 - [x] Pinia Auth Store
 - [x] Vue Router（含 Navigation Guard）
-- [x] AppNavbar（含 RWD 漢堡選單）
-- [x] AppFooter
-- [x] HomeView（HeroCard + InternSection + ProjectSection + CertSection + AcademicSection + FuturePlanSection）
-- [x] ActivitiesView（領導 + 社團 + 旅遊地圖）
+- [x] AppNavbar（圓形 Logo、RWD 漢堡選單）
+- [x] AppFooter（精簡 padding）
+- [x] HomeView（HeroCard 3欄 + InternSection + ProjectSection + CertSection + AcademicSection + FuturePlanSection）
+- [x] InternSection「查看更多」Teleport Modal
+- [x] ActivitiesView（領導 + 社團 Modal + 旅遊地圖 + 國家詳情 Teleport Modal）
 - [x] SocialView（ESG / SDGs 篩選 + Modal）
 - [x] LiteratureView（LED 火車時間軸 + 跑馬燈 + 文學作品）
-- [x] MarketView（新聞分頁 + AI 聊天室 UI）
-- [x] NewsView（TradingView 佔位 + 總經指標 4 欄）
-- [x] FinanceView（指標卡 + SVG 甜甜圈 + 持股表）
-- [x] ThesisView（筆記 + Kanban + 文獻表）
+- [x] MarketView（TradingView 佔位 + 總經指標 4 欄）
+- [x] NewsView（新聞分頁 + AI 聊天室 UI）
+- [x] FinanceView（指標卡 + SVG 甜甜圈 + 持股表）★ 需登入
+- [x] ThesisView（筆記 + Kanban + 文獻表）★ 需登入
+- [x] LoginView（`/danieladmin`，讀取 `.env.local` 驗證）
+- [x] ForbiddenView（403 美化頁面）
+- [x] AdminView（深色側欄 + 7 區塊 + CRUD Modal）★ 需登入
+- [x] AdminTable 元件（`src/components/admin/AdminTable.vue`）
 
 ### ⏳ 待開發（前端）
 
-- [ ] LoginView — 登入表單（連接 `auth.login()`）
-- [ ] AdminView — 功能管理頁
-- [ ] ForbiddenView — 403 美化頁面
 - [ ] HeroCard SVG icons（Instagram / LinkedIn，目前為黑色佔位方塊）
-- [ ] ActivitiesView 旅遊地圖（整合真實地圖 API）
-- [ ] NewsView TradingView Widget 真實整合
-- [ ] MarketView AI 聊天室接通 GitHub Models（GPT-4o）
+- [ ] ActivitiesView 旅遊地圖（整合真實地圖 API，尚未選定套件）
+- [ ] MarketView TradingView Widget 真實整合
+- [ ] NewsView AI 聊天室接通 GitHub Models（GPT-4o）
 
 ### ⏳ 待開發（後端 FastAPI + MySQL）
 
@@ -474,7 +579,11 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 - [ ] 實作所有 REST API 端點
 - [ ] 設定 `VITE_API_URL` 環境變數
 - [ ] 將所有 `// TODO: return apiFetch(...)` 換成真實呼叫
-- [ ] JWT 認證（取代目前純前端 Pinia Auth）
+- [ ] JWT 認證（取代目前純前端 Pinia Auth + mockLogin）
+
+### ⏳ 待部署
+
+- [ ] Docker 環境（等前端 + 後端都穩定後再建）
 
 ---
 
@@ -483,6 +592,10 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 | 變數 | 說明 |
 |------|------|
 | `VITE_API_URL` | FastAPI 後端 Base URL（例：`http://localhost:8000`），未設定時 fallback 為 `''` |
+| `VITE_ADMIN_EMAIL` | 管理員 Email（儲存於 `.env.local`，不 commit）|
+| `VITE_ADMIN_PASSWORD` | 管理員密碼（儲存於 `.env.local`，不 commit）|
+
+> `.env.local` 已加入 `.gitignore`，永遠不會被 commit。
 
 ---
 
@@ -494,7 +607,8 @@ ThesisPaper     { id, topic, name, journal, authors, year, purpose, contribution
 | 作品集 | Meetro 相遇地圖×3、存貨流程自動化×1 |
 | 語言證照 | TOEIC 865、劍橋英檢 B2+、JLPT N4 |
 | 財會證照 | 高級會計師、記帳士（其餘待補） |
-| 學業歷程 | 專科中科大→大學中央財金→碩士臺大會計 |
+| 學業歷程 | 專科中科大 → 大學中央財金 → 碩士臺大會計 |
 | 持股 | 00713（264股）、00881（281股）、00922（352股）、奈米投 L1/L2/L3 |
 | 論文想法 | 3 則（pending / approved / rejected 各 1）|
 | 文獻 | 1 篇（LLM × JAE 2025，Bertomeu et al.）|
+| 旅遊 | 臺灣（Asia）、日本（Asia）、澳大利亞（Australia）|

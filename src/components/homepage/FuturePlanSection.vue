@@ -3,7 +3,7 @@
     <div class="plan__inner">
       <div class="plan__header">
         <h2 class="section-title">未來規劃</h2>
-        <p class="plan__subtitle">由於 AI 世代更迭迅速，先以近 3 年規劃為主</p>
+        <p class="plan__subtitle">由於 AI 時代迭代迅速，先以近 5 年規劃為主</p>
       </div>
 
       <div class="plan__body">

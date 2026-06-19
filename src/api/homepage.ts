@@ -136,7 +136,7 @@ const _certData: CertData = {
   },
   finance: [
     { category: '國際證照', items: ['待補充'] },
-    { category: '國內重要證照', items: ['高級會計師', '記帳士'] },
+    { category: '國內重要證照', items: ['待補充'] },
     { category: '國內其他證照', items: ['待補充'] },
     { category: 'ESG', items: ['待補充'] },
   ],

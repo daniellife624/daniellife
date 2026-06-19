@@ -107,14 +107,16 @@ const visibleNavItems = computed(() =>
   width: 36px;
   height: 36px;
   background-color: var(--color-white);
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
+  border: 2px solid var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-ink-1);
+  flex-shrink: 0;
 }
 
 .navbar__title {

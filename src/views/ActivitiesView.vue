@@ -78,7 +78,12 @@
               <h4 class="continent-card__title">{{ cont.label }}</h4>
               <ul class="continent-card__list">
                 <li v-if="!cont.entries.length" class="continent-card__empty">都還沒去過</li>
-                <li v-for="e in cont.entries" :key="e.id" class="continent-card__entry">
+                <li
+                  v-for="e in cont.entries"
+                  :key="e.id"
+                  class="continent-card__entry continent-card__entry--clickable"
+                  @click="activeTravelEntry = e"
+                >
                   <span class="continent-card__pin">📍</span>{{ e.country }}
                 </li>
               </ul>
@@ -91,7 +96,7 @@
       </div>
     </section>
 
-    <!-- Modal -->
+    <!-- Experience Modal -->
     <Teleport to="body">
       <div v-if="activeModal" class="modal-backdrop" @click.self="closeModal">
         <div class="modal">
@@ -107,16 +112,58 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Travel Entry Modal -->
+    <Teleport to="body">
+      <div v-if="activeTravelEntry" class="modal-backdrop" @click.self="activeTravelEntry = null">
+        <div class="modal travel-modal">
+          <button class="modal__close" @click="activeTravelEntry = null">×</button>
+          <div class="travel-modal__header">
+            <span class="travel-modal__pin">📍</span>
+            <h3 class="modal__title">{{ activeTravelEntry.country }}</h3>
+          </div>
+          <div class="travel-modal__meta-row">
+            <span class="travel-modal__meta-item">城市：{{ activeTravelEntry.city }}</span>
+            <span class="travel-modal__meta-item">洲別：{{ activeTravelEntry.continent }}</span>
+            <span class="travel-modal__meta-item">造訪：{{ activeTravelEntry.visitedAt }}</span>
+          </div>
+          <div class="modal__photos">
+            <div class="modal__photo"></div>
+            <div class="modal__photo"></div>
+          </div>
+          <template v-if="activeTravelEntry.journal || activeTravelEntry.companions || activeTravelEntry.activities || activeTravelEntry.purchases">
+            <div v-if="activeTravelEntry.companions" class="travel-modal__field">
+              <span class="travel-modal__field-label">旅伴</span>
+              <span class="travel-modal__field-value">{{ activeTravelEntry.companions }}</span>
+            </div>
+            <div v-if="activeTravelEntry.activities" class="travel-modal__field">
+              <span class="travel-modal__field-label">主要活動</span>
+              <span class="travel-modal__field-value">{{ activeTravelEntry.activities }}</span>
+            </div>
+            <div v-if="activeTravelEntry.purchases" class="travel-modal__field">
+              <span class="travel-modal__field-label">購物清單</span>
+              <span class="travel-modal__field-value">{{ activeTravelEntry.purchases }}</span>
+            </div>
+            <div v-if="activeTravelEntry.journal" class="travel-modal__journal">
+              <p class="travel-modal__field-label">旅行日記</p>
+              <p class="travel-modal__journal-text">{{ activeTravelEntry.journal }}</p>
+            </div>
+          </template>
+          <p v-else class="travel-modal__empty">尚未填寫旅行見聞，可至後台新增。</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getExperiences, getTravelEntries, groupByContinent } from '@/api/activities'
-import type { Experience } from '@/types/activities'
+import type { Experience, TravelEntry } from '@/types/activities'
 
 const experiences = ref<Experience[]>([])
 const activeModal = ref<Experience | null>(null)
+const activeTravelEntry = ref<TravelEntry | null>(null)
 
 const leadershipItems = computed(() => experiences.value.filter((e) => e.type === 'leadership'))
 const clubItems = computed(() => experiences.value.filter((e) => e.type === 'club'))
@@ -338,6 +385,15 @@ function closeModal() {
 
 .continent-card__pin { font-size: 12px; }
 
+.continent-card__entry--clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  margin: 0 -4px;
+  transition: background 0.15s;
+}
+.continent-card__entry--clickable:hover { background: var(--color-primary-bg); }
+
 .continent-card__btn {
   margin-top: var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -423,6 +479,71 @@ function closeModal() {
   font-size: 14px;
   color: var(--color-ink-2);
   line-height: 1.8;
+}
+
+/* ── Travel Modal ── */
+.travel-modal { gap: var(--space-4); }
+
+.travel-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.travel-modal__pin { font-size: 20px; }
+
+.travel-modal__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.travel-modal__meta-item {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: var(--color-ink-3);
+}
+
+.travel-modal__field {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.travel-modal__field-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-3);
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.travel-modal__field-value {
+  font-family: var(--font-cjk);
+  font-size: 14px;
+  color: var(--color-ink-2);
+}
+
+.travel-modal__journal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.travel-modal__journal-text {
+  font-family: var(--font-cjk);
+  font-size: 14px;
+  color: var(--color-ink-2);
+  line-height: 1.8;
+}
+
+.travel-modal__empty {
+  font-family: var(--font-cjk);
+  font-size: 14px;
+  color: var(--color-ink-3);
+  font-style: italic;
 }
 
 @media (max-width: 767px) {
