@@ -32,6 +32,14 @@
           >{{ tab.label }}</button>
         </div>
 
+        <!-- ITIS notice -->
+        <div v-if="region === 'TAIWAN'" class="itis-notice">
+          <span class="itis-notice__icon">⚠</span>
+          <span>TAIWAN 分頁目前為臨時資料，正式版將接入
+            <strong>ITIS 資策會產業情報研究所</strong>（需後端 proxy 串接）。
+          </span>
+        </div>
+
         <!-- News list -->
         <div class="news-list">
           <div v-if="loading" class="news-list__state">載入中…</div>
@@ -267,6 +275,22 @@ async function sendChat() {
   background: var(--color-primary);
   color: var(--color-ink-1);
 }
+
+/* ITIS notice */
+.itis-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-cjk);
+  font-size: 12px;
+  color: var(--color-ink-2);
+  line-height: 1.6;
+}
+.itis-notice__icon { flex-shrink: 0; color: #d97706; font-size: 14px; margin-top: 1px; }
 
 /* News list */
 .news-list { display: flex; flex-direction: column; gap: var(--space-3); min-height: 320px; }

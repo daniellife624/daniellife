@@ -228,18 +228,14 @@ onUnmounted(() => {
 
 <style scoped>
 .literature {
-  background:
-    radial-gradient(ellipse at 12% 38%, rgba(90, 45, 150, 0.38) 0%, transparent 52%),
-    radial-gradient(ellipse at 88% 10%, rgba(25, 70, 155, 0.28) 0%, transparent 48%),
-    radial-gradient(ellipse at 55% 85%, rgba(20, 55, 110, 0.22) 0%, transparent 50%),
-    #0d0d1a;
+  background: #faf9f7;
 }
 
 /* ══════════════════════════════════════════
    鐵道區塊
 ══════════════════════════════════════════ */
 .track-section {
-  background: rgba(10, 8, 18, 0.72);
+  background: #f5f2ee;
   padding: var(--space-7) 0 var(--space-8);
   overflow: hidden;
 }
@@ -258,14 +254,14 @@ onUnmounted(() => {
   font-family: var(--font-cjk);
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-ink-1);
   margin-bottom: 6px;
 }
 
 .track-section__sub {
   font-family: var(--font-cjk);
   font-size: 13px;
-  color: #888;
+  color: var(--color-ink-3);
 }
 
 /* ── 鐵道容器 ── */
@@ -287,12 +283,12 @@ onUnmounted(() => {
     90deg,
     transparent 0px,
     transparent 14px,
-    rgba(120, 90, 58, 0.55) 14px,
-    rgba(120, 90, 58, 0.55) 26px
+    rgba(120, 90, 58, 0.45) 14px,
+    rgba(120, 90, 58, 0.45) 26px
   );
   /* 上下雙軌 */
-  border-top: 2.5px solid #505050;
-  border-bottom: 2.5px solid #505050;
+  border-top: 2.5px solid #8a8a8a;
+  border-bottom: 2.5px solid #8a8a8a;
 }
 
 .rail-fill {
@@ -328,7 +324,7 @@ onUnmounted(() => {
   top: 253px;
   font-family: var(--font-cjk);
   font-size: 11px;
-  color: #888;
+  color: var(--color-ink-3);
   letter-spacing: 0.04em;
 }
 
@@ -362,7 +358,7 @@ onUnmounted(() => {
   width: 155px;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  border: 1px solid #383838;
+  border: 1px solid #d8cfc4;
   opacity: 0;
   transform: translateY(-14px);
   transition: opacity 0.45s ease, transform 0.45s ease, border-color 0.3s;
@@ -377,11 +373,9 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-/* Card top (dark content area) */
+/* Card top */
 .station__card-top {
-  background: rgba(38, 34, 48, 0.88);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: #fffbf4;
   padding: var(--space-3) var(--space-3) var(--space-2);
   display: flex;
   flex-direction: column;
@@ -391,7 +385,7 @@ onUnmounted(() => {
 .station__grade {
   font-family: var(--font-cjk);
   font-size: 10px;
-  color: #aaa;
+  color: var(--color-ink-3);
   letter-spacing: 0.04em;
 }
 
@@ -399,22 +393,20 @@ onUnmounted(() => {
   font-family: var(--font-cjk);
   font-size: 13px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-ink-1);
   line-height: 1.4;
 }
 
 .station__result {
   font-family: var(--font-cjk);
   font-size: 12px;
-  color: var(--color-primary);
+  color: #8b6200;
 }
 
-/* Card bottom (darker area) */
+/* Card bottom */
 .station__card-bottom {
-  background: rgba(22, 20, 30, 0.9);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-top: 1px solid #383838;
+  background: #f0ebe2;
+  border-top: 1px solid #d8cfc4;
   padding: var(--space-2) var(--space-3);
   display: flex;
   flex-direction: column;
@@ -430,7 +422,7 @@ onUnmounted(() => {
 .station__nav-btn {
   background: none;
   border: none;
-  color: #888;
+  color: var(--color-ink-3);
   font-size: 10px;
   cursor: pointer;
   padding: 0 2px;
@@ -442,7 +434,7 @@ onUnmounted(() => {
 .station__date {
   font-family: 'Courier New', monospace;
   font-size: 10px;
-  color: #bbb;
+  color: #777;
 }
 
 .station__progress {
@@ -454,7 +446,7 @@ onUnmounted(() => {
 .station__prog-lbl {
   font-family: var(--font-cjk);
   font-size: 9px;
-  color: #888;
+  color: var(--color-ink-3);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -462,7 +454,7 @@ onUnmounted(() => {
 .station__bar {
   flex: 1;
   height: 3px;
-  background: #3a3a3a;
+  background: #d8cfc4;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -477,19 +469,19 @@ onUnmounted(() => {
 .station__pole {
   width: 1px;
   height: 30px;
-  background: #484848;
+  background: #c4b8a8;
   transition: background 0.4s;
 }
 
-.station--arrived .station__pole { background: #686868; }
+.station--arrived .station__pole { background: #a89880; }
 
 /* Dot on the rail */
 .station__dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #2e2e2e;
-  border: 2px solid #555;
+  background: #e0d8cc;
+  border: 2px solid #b8a88a;
   transition: background 0.4s, border-color 0.4s;
   z-index: 3;
 }
@@ -510,7 +502,7 @@ onUnmounted(() => {
 ══════════════════════════════════════════ */
 .works-section {
   padding: var(--space-8) var(--space-6);
-  background: rgba(8, 8, 16, 0.68);
+  background: #faf9f7;
 }
 
 .works-inner {
@@ -522,7 +514,7 @@ onUnmounted(() => {
   font-family: var(--font-cjk);
   font-size: 14px;
   font-weight: 400;
-  color: #aaa;
+  color: var(--color-ink-3);
   margin-bottom: var(--space-5);
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -536,10 +528,8 @@ onUnmounted(() => {
 
 /* ── 時刻板卡片 ── */
 .work-card {
-  background: rgba(22, 18, 38, 0.68);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #ffffff;
+  border: 1px solid #e0d8cc;
   border-radius: 3px;
   overflow: hidden;
   transition: border-color 0.25s, box-shadow 0.25s;
@@ -556,9 +546,9 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-3);
   padding: 10px var(--space-4);
-  background: rgba(35, 28, 60, 0.85);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  border-left: 3px solid #e8c13a;
+  background: var(--color-primary);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
 }
 
 .work-card__title {
@@ -566,53 +556,51 @@ onUnmounted(() => {
   font-family: var(--font-cjk);
   font-size: 14px;
   font-weight: 700;
-  color: #e8c13a;
+  color: #1a1000;
   letter-spacing: 0.04em;
-  text-shadow: 0 0 10px rgba(232, 193, 58, 0.35);
 }
 
-/* 閱讀全文：LED 綠色邊框按鈕 */
+/* 閱讀全文按鈕 */
 .work-card__read-btn {
   padding: 3px 10px;
   background: transparent;
-  color: #22c55e;
-  border: 1px solid #22c55e;
+  color: #15803d;
+  border: 1px solid #15803d;
   border-radius: 2px;
   font-family: 'Courier New', monospace;
   font-size: 11px;
   cursor: pointer;
   letter-spacing: 0.06em;
   transition: background 0.2s;
-  text-shadow: 0 0 6px rgba(34, 197, 94, 0.45);
   white-space: nowrap;
 }
 
-.work-card__read-btn:hover { background: rgba(34, 197, 94, 0.1); }
+.work-card__read-btn:hover { background: rgba(21, 128, 61, 0.1); }
 
 /* 資料列 */
 .work-card__row {
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #f0ece6;
 }
 
 .work-card__row:last-child { border-bottom: none; }
 
-/* 欄位標籤（如時刻板欄位頭） */
+/* 欄位標籤（時刻板欄位頭） */
 .work-card__label {
   width: 108px;
   flex-shrink: 0;
   padding: 8px var(--space-3);
   font-family: var(--font-cjk);
   font-size: 11px;
-  color: #aaa;
+  color: var(--color-ink-3);
   display: flex;
   align-items: center;
-  background: rgba(15, 12, 28, 0.7);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: #f5f0e8;
+  border-right: 1px solid #e0d8cc;
 }
 
-/* 資料值（LED 顯示區） */
+/* 資料值 */
 .work-card__val {
   flex: 1;
   padding: 8px var(--space-3);
@@ -621,21 +609,19 @@ onUnmounted(() => {
   font-weight: 600;
   display: flex;
   align-items: center;
-  background: rgba(10, 8, 20, 0.55);
+  background: #ffffff;
   min-height: 36px;
   word-break: break-all;
 }
 
-/* 琥珀色 LED（年份/期間） */
+/* 琥珀色（年份/期間） */
 .work-card__val--yellow {
-  color: #e8c13a;
-  text-shadow: 0 0 8px rgba(232, 193, 58, 0.5);
+  color: #7a5800;
 }
 
-/* 綠色 LED（得獎/摘要） */
+/* 綠色（得獎/摘要） */
 .work-card__val--green {
-  color: #22c55e;
-  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  color: #166534;
 }
 
 /* ── RWD ── */

@@ -14,7 +14,7 @@
       <!-- 中欄：社群帳號 -->
       <div class="hero__center">
         <div class="hero__social">
-          <a href="https://www.instagram.com/daniellife_" target="_blank" class="hero__social-link">
+          <a href="https://www.instagram.com/_daniellife_" target="_blank" class="hero__social-link">
             <!-- Instagram brand icon -->
             <svg class="hero__social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <defs>
@@ -33,7 +33,7 @@
             </svg>
             _daniellife_
           </a>
-          <a href="https://www.linkedin.com/in/yen-ting-chou" target="_blank" class="hero__social-link">
+          <a href="https://www.linkedin.com/in/yenting2003" target="_blank" class="hero__social-link">
             <!-- LinkedIn brand icon -->
             <svg class="hero__social-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <rect width="24" height="24" rx="4" fill="#0A66C2"/>
@@ -48,7 +48,7 @@
       <div class="hero__right">
         <div class="hero__motto-card">
           <p class="hero__motto-label">人生座右銘</p>
-          <p class="hero__motto-text">你不需要跟隨著才能開始<br>但至少要真心嘗試</p>
+          <p class="hero__motto-text">你不需要很厲害才能開始<br>但至少要勇於嘗試</p>
         </div>
       </div>
 

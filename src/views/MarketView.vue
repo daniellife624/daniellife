@@ -6,14 +6,8 @@
       <section class="market__section">
         <h2 class="market__section-title">股票市場 Stock Market</h2>
         <div class="market__grid market__grid--2">
-          <div class="market__chart-wrap">
-            <p class="market__chart-label">台股</p>
-            <div ref="taiexEl" class="market__chart market__chart--lg"></div>
-          </div>
-          <div class="market__chart-wrap">
-            <p class="market__chart-label">美股</p>
-            <div ref="usEl" class="market__chart market__chart--lg"></div>
-          </div>
+          <MarketOverviewPanel default-tab="TW" />
+          <MarketOverviewPanel default-tab="US" />
         </div>
       </section>
 
@@ -43,22 +37,22 @@
         <div class="market__grid market__grid--2">
           <div class="market__chart-wrap">
             <p class="market__chart-label">美國10年期公債殖利率</p>
-            <div class="market__chart market__chart--md">
+            <div class="market__chart market__chart--fred">
               <iframe
-                src="https://fred.stlouisfed.org/graph/?id=DGS10&cosd=2010-01-01&fq=Daily&fam=avg&fgst=lin&fgsnd=2010-01-01&line_index=1&transformation=lin&nd=2010-01-01"
+                src="https://fred.stlouisfed.org/graph/?id=DGS10&cosd=2010-01-01"
                 width="100%" height="100%"
-                frameborder="0" scrolling="no"
+                frameborder="0"
                 title="US 10-Year Treasury Yield — FRED"
               ></iframe>
             </div>
           </div>
           <div class="market__chart-wrap">
             <p class="market__chart-label">Fed 基準利率（聯邦基金目標利率）</p>
-            <div class="market__chart market__chart--md">
+            <div class="market__chart market__chart--fred">
               <iframe
                 src="https://fred.stlouisfed.org/graph/?id=FEDFUNDS&cosd=2010-01-01"
                 width="100%" height="100%"
-                frameborder="0" scrolling="no"
+                frameborder="0"
                 title="Federal Funds Rate — FRED"
               ></iframe>
             </div>
@@ -68,13 +62,27 @@
 
       <!-- ── 總經指標 — World Bank API + bar chart ── -->
       <section class="market__section">
-        <h2 class="market__section-title">其他總經重要指標</h2>
+        <div class="market__section-head">
+          <h2 class="market__section-title">其他總經重要指標</h2>
+          <div class="wb-rtabs">
+            <button
+              class="wb-rtab"
+              :class="{ 'wb-rtab--active': wbCountry === 'US' }"
+              @click="switchWbCountry('US')"
+            >🇺🇸 美國</button>
+            <button
+              class="wb-rtab"
+              :class="{ 'wb-rtab--active': wbCountry === 'TW' }"
+              @click="switchWbCountry('TW')"
+            >🇹🇼 台灣</button>
+          </div>
+        </div>
         <p class="market__section-sub">資料來源：<a href="https://data.worldbank.org/" target="_blank" rel="noopener">World Bank Open Data</a></p>
         <div class="market__grid market__grid--2">
 
           <!-- GDP -->
           <div class="market__chart-wrap">
-            <p class="market__chart-label">GDP 成長率（美國，年增率 %）</p>
+            <p class="market__chart-label">GDP 成長率（{{ WB_LABEL[wbCountry] }}，年增率 %）</p>
             <div class="market__chart market__chart--lg wb-box">
               <div v-if="gdpLoading" class="wb-state">載入中…</div>
               <div v-else-if="gdpError"  class="wb-state wb-state--err">資料載入失敗</div>
@@ -99,7 +107,7 @@
 
           <!-- CPI -->
           <div class="market__chart-wrap">
-            <p class="market__chart-label">CPI 通膨率（美國，年增率 %）</p>
+            <p class="market__chart-label">CPI 通膨率（{{ WB_LABEL[wbCountry] }}，年增率 %）</p>
             <div class="market__chart market__chart--lg wb-box">
               <div v-if="cpiLoading" class="wb-state">載入中…</div>
               <div v-else-if="cpiError"  class="wb-state wb-state--err">資料載入失敗</div>
@@ -131,10 +139,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
+import MarketOverviewPanel from '@/components/market/MarketOverviewPanel.vue'
 
-/* ─── TradingView chart refs ─── */
-const taiexEl  = ref<HTMLElement | null>(null)
-const usEl     = ref<HTMLElement | null>(null)
+/* ─── TradingView forex refs ─── */
 const usdtwdEl = ref<HTMLElement | null>(null)
 const jpytwdEl = ref<HTMLElement | null>(null)
 const eurtwdEl = ref<HTMLElement | null>(null)
@@ -150,29 +157,6 @@ function injectWidget(el: HTMLElement, widget: string, cfg: object) {
   el.appendChild(s)
 }
 
-// Advanced Chart requires a tradingview-widget-container__widget inner div,
-// otherwise the widget falls back to default symbol (AAPL).
-function injectAdvancedChart(el: HTMLElement, cfg: object) {
-  el.classList.add('tradingview-widget-container')
-  const inner = document.createElement('div')
-  inner.className = 'tradingview-widget-container__widget'
-  inner.style.cssText = 'height:100%;width:100%'
-  el.appendChild(inner)
-  const s = document.createElement('script')
-  s.type  = 'text/javascript'
-  s.src   = TV + 'embed-widget-advanced-chart.js'
-  s.async = true
-  s.innerHTML = JSON.stringify(cfg)
-  el.appendChild(s)
-}
-
-const advChartCfg = (symbol: string, timezone = 'Asia/Taipei') => ({
-  autosize: true, symbol, interval: 'D', timezone,
-  theme: 'light', style: '1', locale: 'zh_TW',
-  enable_publishing: false, withdateranges: true, range: '6M',
-  hide_side_toolbar: false, allow_symbol_change: true, save_image: false,
-})
-
 const miniCfg = (symbol: string, color: string, range = '1M') => ({
   symbol, width: '100%', height: '100%', locale: 'zh_TW', dateRange: range,
   colorTheme: 'light',
@@ -185,6 +169,9 @@ const miniCfg = (symbol: string, color: string, range = '1M') => ({
 /* ─── World Bank types ─── */
 interface WBEntry { year: string; value: number }
 
+const wbCountry = ref<'US' | 'TW'>('US')
+const WB_LABEL: Record<string, string> = { US: '美國', TW: '台灣' }
+
 const gdpData    = ref<WBEntry[]>([])
 const gdpLoading = ref(true)
 const gdpError   = ref(false)
@@ -195,8 +182,8 @@ const cpiLoading = ref(true)
 const cpiError   = ref(false)
 const cpiMax     = computed(() => Math.max(...cpiData.value.map(d => Math.abs(d.value)), 1))
 
-async function fetchWB(indicator: string): Promise<WBEntry[]> {
-  const url = `https://api.worldbank.org/v2/country/US/indicator/${indicator}?format=json&mrv=10&per_page=10`
+async function fetchWB(indicator: string, country = 'US'): Promise<WBEntry[]> {
+  const url = `https://api.worldbank.org/v2/country/${country}/indicator/${indicator}?format=json&mrv=10&per_page=10`
   const res = await fetch(url)
   if (!res.ok) throw new Error(res.statusText)
   const raw: [unknown, Record<string, unknown>[]] = await res.json()
@@ -206,12 +193,36 @@ async function fetchWB(indicator: string): Promise<WBEntry[]> {
     .reverse()
 }
 
+async function loadWbData() {
+  gdpLoading.value = true
+  gdpError.value   = false
+  cpiLoading.value = true
+  cpiError.value   = false
+
+  const c = wbCountry.value
+  try {
+    gdpData.value = await fetchWB('NY.GDP.MKTP.KD.ZG', c)
+  } catch {
+    gdpError.value = true
+  } finally {
+    gdpLoading.value = false
+  }
+  try {
+    cpiData.value = await fetchWB('FP.CPI.TOTL.ZG', c)
+  } catch {
+    cpiError.value = true
+  } finally {
+    cpiLoading.value = false
+  }
+}
+
+function switchWbCountry(c: 'US' | 'TW') {
+  wbCountry.value = c
+  loadWbData()
+}
+
 /* ─── Mount ─── */
 onMounted(async () => {
-
-  /* Stocks — Advanced Chart with proper container structure so symbol config is applied */
-  if (taiexEl.value) injectAdvancedChart(taiexEl.value, advChartCfg('TWSE:TAIEX'))
-  if (usEl.value)    injectAdvancedChart(usEl.value,    advChartCfg('SP:SPX', 'America/New_York'))
 
   /* Forex */
   const blue = 'rgba(41,98,255,1)'
@@ -223,23 +234,8 @@ onMounted(async () => {
     if (el.value) injectWidget(el.value, 'embed-widget-mini-symbol-overview.js', miniCfg(symbol, blue, '1M'))
   })
 
-  /* World Bank GDP */
-  try {
-    gdpData.value = await fetchWB('NY.GDP.MKTP.KD.ZG')
-  } catch {
-    gdpError.value = true
-  } finally {
-    gdpLoading.value = false
-  }
-
-  /* World Bank CPI */
-  try {
-    cpiData.value = await fetchWB('FP.CPI.TOTL.ZG')
-  } catch {
-    cpiError.value = true
-  } finally {
-    cpiLoading.value = false
-  }
+  /* World Bank */
+  loadWbData()
 
 })
 </script>
@@ -264,6 +260,43 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.market__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* WB country switcher */
+.wb-rtabs {
+  display: flex;
+  gap: 6px;
+}
+
+.wb-rtab {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-ink-4);
+  background: transparent;
+  font-family: var(--font-cjk);
+  font-size: 12px;
+  color: var(--color-ink-2);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.wb-rtab--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-ink-1);
+  font-weight: 600;
+}
+
+.wb-rtab:not(.wb-rtab--active):hover {
+  border-color: var(--color-ink-3);
+  color: var(--color-ink-1);
 }
 
 .market__section-title {
@@ -316,8 +349,9 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.market__chart--lg { height: 460px; }
-.market__chart--md { height: 300px; }
+.market__chart--lg   { height: 460px; }
+.market__chart--md   { height: 300px; }
+.market__chart--fred { height: 520px; }
 
 /* ── World Bank bar chart ── */
 .wb-box {
