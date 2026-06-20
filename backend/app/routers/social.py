@@ -1,3 +1,5 @@
+import json
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -8,25 +10,51 @@ from ..schemas.social import SocialActivityOut, SocialActivityIn
 router = APIRouter(prefix="/social", tags=["social"])
 
 
+def _parse_date(s: str | None) -> date | None:
+    if not s:
+        return None
+    s = s.replace(".", "-").replace("/", "-")
+    parts = s.split("-")
+    try:
+        if len(parts) == 2:
+            return date(int(parts[0]), int(parts[1]), 1)
+        return date(int(parts[0]), int(parts[1]), int(parts[2]))
+    except (ValueError, IndexError):
+        return None
+
+
+def _to_out(r) -> SocialActivityOut:
+    return SocialActivityOut(
+        id=r.id,
+        name=r.name,
+        organization=r.organization,
+        esgType=r.esg_type,
+        sdgNumbers=json.loads(r.sdg_numbers) if r.sdg_numbers else [],
+        periodFrom=r.period_from.isoformat() if r.period_from else "",
+        periodTo=r.period_to.isoformat() if r.period_to else None,
+        contribution=r.contribution,
+        reflection=r.reflection or "",
+        photoUrl=r.photo_url,
+    )
+
+
 @router.get("", response_model=list[SocialActivityOut])
 def list_social(db: Session = Depends(get_db)):
-    rows = db.query(SocialActivity).all()
-    return [SocialActivityOut(
-        id=r.id, title=r.title, org=r.org, role=r.role,
-        period=r.period, category=r.category,
-        sdgTag=r.sdg_tag, description=r.description,
-    ) for r in rows]
+    return [_to_out(r) for r in db.query(SocialActivity).all()]
 
 
 @router.post("", response_model=SocialActivityOut)
 def create_social(body: SocialActivityIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = SocialActivity(
-        title=body.title, org=body.org, role=body.role, period=body.period,
-        category=body.category, sdg_tag=body.sdgTag, description=body.description,
+        name=body.name, organization=body.organization,
+        esg_type=body.esgType, sdg_numbers=json.dumps(body.sdgNumbers),
+        period_from=_parse_date(body.periodFrom),
+        period_to=_parse_date(body.periodTo) if body.periodTo else None,
+        contribution=body.contribution, reflection=body.reflection,
+        photo_url=body.photoUrl,
     )
     db.add(obj); db.commit(); db.refresh(obj)
-    return SocialActivityOut(id=obj.id, title=obj.title, org=obj.org, role=obj.role,
-        period=obj.period, category=obj.category, sdgTag=obj.sdg_tag, description=obj.description)
+    return _to_out(obj)
 
 
 @router.put("/{item_id}", response_model=SocialActivityOut)
@@ -34,12 +62,14 @@ def update_social(item_id: int, body: SocialActivityIn, db: Session = Depends(ge
     obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    obj.title = body.title; obj.org = body.org; obj.role = body.role
-    obj.period = body.period; obj.category = body.category
-    obj.sdg_tag = body.sdgTag; obj.description = body.description
+    obj.name = body.name; obj.organization = body.organization
+    obj.esg_type = body.esgType; obj.sdg_numbers = json.dumps(body.sdgNumbers)
+    obj.period_from = _parse_date(body.periodFrom)
+    obj.period_to = _parse_date(body.periodTo) if body.periodTo else None
+    obj.contribution = body.contribution; obj.reflection = body.reflection
+    obj.photo_url = body.photoUrl
     db.commit(); db.refresh(obj)
-    return SocialActivityOut(id=obj.id, title=obj.title, org=obj.org, role=obj.role,
-        period=obj.period, category=obj.category, sdgTag=obj.sdg_tag, description=obj.description)
+    return _to_out(obj)
 
 
 @router.delete("/{item_id}", status_code=204)

@@ -7,22 +7,18 @@ class InternshipOut(BaseModel):
     id: int
     company: str
     department: str
-    period: str
+    startDate: Optional[str] = None     # ISO "YYYY-MM-DD"
+    endDate: Optional[str] = None
+    period: str                         # "YYYY/MM – YYYY/MM" computed
     contribution: str
     photos: list[str] = []
-
-    @field_validator("photos", mode="before")
-    @classmethod
-    def parse_photos(cls, v):
-        return json.loads(v) if isinstance(v, str) else v
-
-    model_config = {"from_attributes": True}
 
 
 class InternshipIn(BaseModel):
     company: str
     department: str
-    period: str
+    startDate: Optional[str] = None     # ISO "YYYY-MM-DD"
+    endDate: Optional[str] = None
     contribution: str
     photos: list[str] = []
 

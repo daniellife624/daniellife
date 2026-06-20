@@ -1,16 +1,17 @@
-from sqlalchemy import Column, Integer, String, Text, Float
+from sqlalchemy import Column, Integer, String, Text, Float, Date
 from ..database import Base
 
 
 class Internship(Base):
     __tablename__ = "internships"
 
-    id = Column(Integer, primary_key=True, index=True)
-    company = Column(String(200), nullable=False)
-    department = Column(String(200), nullable=False)
-    period = Column(String(100), nullable=False)
+    id           = Column(Integer, primary_key=True, index=True)
+    company      = Column(String(200), nullable=False)
+    department   = Column(String(200), nullable=False)
+    start_date   = Column(Date, nullable=True)
+    end_date     = Column(Date, nullable=True)
     contribution = Column(Text, nullable=False)
-    photos = Column(Text, default="[]")        # JSON array of URLs
+    photos       = Column(Text, default="[]")
 
 
 class Project(Base):

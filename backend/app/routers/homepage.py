@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -9,17 +10,53 @@ from ..schemas import homepage as s
 router = APIRouter(prefix="/homepage", tags=["homepage"])
 
 
+def _parse_date(st: str | None) -> date | None:
+    if not st:
+        return None
+    st = st.replace(".", "-").replace("/", "-")
+    parts = st.split("-")
+    try:
+        if len(parts) == 2:
+            return date(int(parts[0]), int(parts[1]), 1)
+        return date(int(parts[0]), int(parts[1]), int(parts[2]))
+    except (ValueError, IndexError):
+        return None
+
+
+def _fmt_period(start: date | None, end: date | None) -> str:
+    if start is None:
+        return ""
+    s = start.strftime("%Y/%m")
+    return f"{s} – {end.strftime('%Y/%m')}" if end else f"{s} – 至今"
+
+
+def _intern_to_out(r) -> s.InternshipOut:
+    return s.InternshipOut(
+        id=r.id, company=r.company, department=r.department,
+        startDate=r.start_date.isoformat() if r.start_date else None,
+        endDate=r.end_date.isoformat() if r.end_date else None,
+        period=_fmt_period(r.start_date, r.end_date),
+        contribution=r.contribution,
+        photos=json.loads(r.photos) if r.photos else [],
+    )
+
+
 # ── Internships ──────────────────────────────────────────────────
 @router.get("/internships", response_model=list[s.InternshipOut])
 def list_internships(db: Session = Depends(get_db)):
-    return db.query(m.Internship).all()
+    return [_intern_to_out(r) for r in db.query(m.Internship).all()]
 
 
 @router.post("/internships", response_model=s.InternshipOut)
 def create_internship(body: s.InternshipIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    obj = m.Internship(**body.model_dump() | {"photos": json.dumps(body.photos)})
+    obj = m.Internship(
+        company=body.company, department=body.department,
+        start_date=_parse_date(body.startDate),
+        end_date=_parse_date(body.endDate),
+        contribution=body.contribution, photos=json.dumps(body.photos),
+    )
     db.add(obj); db.commit(); db.refresh(obj)
-    return obj
+    return _intern_to_out(obj)
 
 
 @router.put("/internships/{item_id}", response_model=s.InternshipOut)
@@ -27,10 +64,11 @@ def update_internship(item_id: int, body: s.InternshipIn, db: Session = Depends(
     obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in body.model_dump().items():
-        setattr(obj, k, json.dumps(v) if k == "photos" else v)
+    obj.company = body.company; obj.department = body.department
+    obj.start_date = _parse_date(body.startDate); obj.end_date = _parse_date(body.endDate)
+    obj.contribution = body.contribution; obj.photos = json.dumps(body.photos)
     db.commit(); db.refresh(obj)
-    return obj
+    return _intern_to_out(obj)
 
 
 @router.delete("/internships/{item_id}", status_code=204)
