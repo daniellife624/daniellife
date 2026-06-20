@@ -7,39 +7,14 @@
       </div>
 
       <h1 class="login__title">管理員登入</h1>
+      <p class="login__desc">僅限授權帳號，透過 Google 驗證登入</p>
 
-      <form class="login__form" @submit.prevent="submit">
-        <label class="login__label">
-          Email
-          <input
-            v-model="email"
-            class="login__input"
-            type="email"
-            placeholder="your@email.com"
-            autocomplete="email"
-            required
-          />
-        </label>
+      <p v-if="errorMsg" class="login__error">{{ errorMsg }}</p>
 
-        <label class="login__label">
-          密碼
-          <input
-            v-model="password"
-            class="login__input"
-            type="password"
-            placeholder="••••••••"
-            autocomplete="current-password"
-            required
-          />
-        </label>
-
-        <p v-if="errorMsg" class="login__error">{{ errorMsg }}</p>
-
-        <button class="login__btn" type="submit" :disabled="loading">
-          <span v-if="loading">驗證中…</span>
-          <span v-else>登入</span>
-        </button>
-      </form>
+      <div class="login__google-wrap">
+        <div ref="googleBtnEl"></div>
+        <p v-if="loading" class="login__loading">驗證中…</p>
+      </div>
 
       <p class="login__back">
         <RouterLink to="/" class="login__back-link">← 回到首頁</RouterLink>
@@ -49,30 +24,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { login as apiLogin } from '@/api/auth'
+import { googleLogin } from '@/api/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-
-const email = ref('')
-const password = ref('')
-const loading = ref(false)
+const googleBtnEl = ref<HTMLElement | null>(null)
 const errorMsg = ref('')
+const loading = ref(false)
 
-async function submit() {
+onMounted(() => {
+  const script = document.createElement('script')
+  script.src = 'https://accounts.google.com/gsi/client'
+  script.onload = initGoogle
+  script.onerror = () => { errorMsg.value = '無法載入 Google 登入，請確認網路連線' }
+  document.head.appendChild(script)
+})
+
+function initGoogle() {
+  // @ts-ignore
+  window.google.accounts.id.initialize({
+    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
+    callback: handleCredential,
+    auto_select: false,
+  })
+  // @ts-ignore
+  window.google.accounts.id.renderButton(googleBtnEl.value!, {
+    theme: 'outline',
+    size: 'large',
+    type: 'standard',
+    text: 'signin_with',
+    shape: 'rectangular',
+    logo_alignment: 'left',
+    width: 280,
+  })
+}
+
+async function handleCredential(response: { credential: string }) {
   errorMsg.value = ''
   loading.value = true
-  const result = await apiLogin(email.value, password.value)
+  const result = await googleLogin(response.credential)
   loading.value = false
 
   if (result.ok) {
     auth.login({ name: result.name, email: result.email })
     router.push('/admin')
   } else {
-    errorMsg.value = 'Email 或密碼錯誤，請再試一次'
+    errorMsg.value = result.error?.includes('403')
+      ? '此 Google 帳號沒有存取權限'
+      : '登入失敗，請再試一次'
   }
 }
 </script>
@@ -135,36 +137,11 @@ async function submit() {
   margin-top: calc(-1 * var(--space-2));
 }
 
-.login__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.login__label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+.login__desc {
   font-family: var(--font-cjk);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--color-ink-2);
-}
-
-.login__input {
-  padding: var(--space-3) var(--space-3);
-  border: 1px solid var(--color-ink-4);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--color-ink-1);
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.login__input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(232, 193, 58, 0.15);
+  color: var(--color-ink-3);
+  margin-top: calc(-1 * var(--space-3));
 }
 
 .login__error {
@@ -172,25 +149,24 @@ async function submit() {
   font-size: 13px;
   color: #dc2626;
   text-align: center;
-}
-
-.login__btn {
-  width: 100%;
-  padding: var(--space-3) 0;
-  background: var(--color-primary);
-  color: var(--color-ink-1);
-  border: none;
+  padding: var(--space-2) var(--space-3);
+  background: #fef2f2;
   border-radius: var(--radius-sm);
-  font-family: var(--font-cjk);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  margin-top: var(--space-2);
 }
 
-.login__btn:hover:not(:disabled) { opacity: 0.85; }
-.login__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login__google-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.login__loading {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: var(--color-ink-3);
+}
 
 .login__back {
   text-align: center;

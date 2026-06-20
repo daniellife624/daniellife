@@ -102,7 +102,12 @@ async def _get_taiwan_news(page: int, keyword: Optional[str]):
             raise HTTPException(502, f"ITIS fetch failed: {e}")
 
 
+_EVENT_KEYWORDS = ("研討會", "論壇", "工作坊", "說明會", "座談會", "線上課程", "訓練班", "報名")
+
+
 def _paginate(items: list, page: int, keyword: Optional[str]) -> dict:
+    # Exclude seminar/event-type items; keep only news articles
+    items = [i for i in items if not any(k in i["title"] for k in _EVENT_KEYWORDS)]
     if keyword:
         kw = keyword.lower()
         items = [i for i in items if kw in i["title"].lower() or kw in i["summary"].lower()]

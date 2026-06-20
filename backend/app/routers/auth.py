@@ -1,39 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from ..database import get_db
-from ..auth import verify_password, hash_password, create_access_token
+from fastapi import APIRouter, HTTPException, status
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from ..config import settings
-from ..models.user import User
-from ..schemas.auth import LoginRequest, TokenResponse
+from ..auth import create_access_token
+from ..schemas.auth import GoogleLoginRequest, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == body.email).first()
+@router.post("/google", response_model=TokenResponse)
+def google_login(body: GoogleLoginRequest):
+    # Verify Google ID token
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            body.credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid Google token: {e}")
 
-    # Fallback: accept .env credentials even if DB has no users
-    if not user:
-        if body.email == settings.ADMIN_EMAIL and body.password == settings.ADMIN_PASSWORD:
-            token = create_access_token(subject=body.email)
-            return TokenResponse(access_token=token, name="Daniel", email=body.email)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    email: str = idinfo.get("email", "")
+    if not idinfo.get("email_verified", False):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google email not verified")
+    if email != settings.ADMIN_EMAIL:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not authorized")
 
-    if not verify_password(body.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
-    token = create_access_token(subject=user.email)
-    return TokenResponse(access_token=token, name=user.name, email=user.email)
-
-
-@router.post("/register", response_model=TokenResponse, include_in_schema=False)
-def register(body: LoginRequest, name: str = "Daniel", db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == body.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    user = User(name=name, email=body.email, hashed_password=hash_password(body.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    token = create_access_token(subject=user.email)
-    return TokenResponse(access_token=token, name=user.name, email=user.email)
+    token = create_access_token(subject=email)
+    name: str = idinfo.get("name", "Daniel")
+    return TokenResponse(access_token=token, name=name, email=email)

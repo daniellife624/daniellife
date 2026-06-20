@@ -10,9 +10,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # Admin credentials (fallback if DB has no users)
-    ADMIN_EMAIL: str = "admin@daniellife.com"
-    ADMIN_PASSWORD: str = "changeme"
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    ADMIN_EMAIL: str = "admin@daniellife.com"  # only this email can log in
 
     # ITIS proxy
     ITIS_BASE_URL: str = "https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp"
@@ -20,8 +20,7 @@ class Settings(BaseSettings):
     # Frontend origin (CORS)
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 
-    class Config:
-        env_file = ".env"
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

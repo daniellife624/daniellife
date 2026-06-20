@@ -252,7 +252,7 @@ onMounted(async () => {
   padding: var(--space-8) var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-9);
+  gap: var(--space-7);
 }
 
 /* Section */
