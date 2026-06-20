@@ -1,14 +1,28 @@
-// TODO: replace with real JWT auth — POST /api/auth/login → { token }
-// Set VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD in .env.local (not committed)
-const ADMIN_EMAIL    = import.meta.env.VITE_ADMIN_EMAIL    ?? 'admin@daniellife.com'
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? 'changeme'
+import { apiFetch, setToken, clearToken } from './client'
 
-export async function mockLogin(
+interface LoginResponse {
+  access_token: string
+  token_type: string
+  name: string
+  email: string
+}
+
+export async function login(
   email: string,
   password: string,
 ): Promise<{ ok: boolean; name: string; email: string }> {
-  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    return { ok: true, name: '丹尼', email }
+  try {
+    const res = await apiFetch<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
+    setToken(res.access_token)
+    return { ok: true, name: res.name, email: res.email }
+  } catch {
+    return { ok: false, name: '', email: '' }
   }
-  return { ok: false, name: '', email: '' }
+}
+
+export function logout() {
+  clearToken()
 }

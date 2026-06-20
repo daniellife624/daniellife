@@ -52,7 +52,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { mockLogin } from '@/api/auth'
+import { login as apiLogin } from '@/api/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -65,7 +65,7 @@ const errorMsg = ref('')
 async function submit() {
   errorMsg.value = ''
   loading.value = true
-  const result = await mockLogin(email.value, password.value)
+  const result = await apiLogin(email.value, password.value)
   loading.value = false
 
   if (result.ok) {
