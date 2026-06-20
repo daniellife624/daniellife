@@ -21,8 +21,10 @@
 | CSS | Scoped CSS + Design Tokens（`tokens.css`） |
 | 字體 | DM Serif Display / Inter / Noto Serif TC / JetBrains Mono |
 | 地圖 | Leaflet + topojson-client（世界地圖 + 訪國高亮） |
-| 後端（規劃中） | FastAPI + MySQL |
-| AI 整合（規劃中） | GitHub Models（GPT-4o）|
+| 後端 | FastAPI 0.111 + SQLAlchemy 2.0 + PyMySQL |
+| 資料庫 | MySQL（XAMPP MariaDB 相容）|
+| 認證 | JWT（python-jose + passlib bcrypt） |
+| AI 整合（待串接） | GitHub Models（GPT-4o）|
 
 ### npm 套件（非標準 Vite 預設）
 
@@ -588,19 +590,20 @@ Emits: add, edit(id), delete(id)
 - [x] ThesisView（便利貼 Kanban + drag-drop + 文獻篩選 + Notion 按鈕）★
 - [x] LoginView（`/danieladmin`）、ForbiddenView、AdminView + AdminTable ★
 
-### ⏳ 待開發（前端）
+
+- [x] **FastAPI 後端骨架**（28 個 endpoint、JWT、CORS、lifespan `create_all`）
+- [x] **MySQL Schema**（15 張資料表，SQLAlchemy ORM auto-create）
+- [x] **JWT 認證**（POST /api/auth/login → Bearer token，localStorage 持久化）
+- [x] **前後端串接**：activities / finance / thesis 換成真實 apiFetch
+- [x] **seed.py**（一鍵填入所有 mock 初始資料）
+
+### ⏳ 待開發（前後端）
 
 - [ ] NewsView AI 聊天室接通 GitHub Models（GPT-4o）
 - [ ] Notion OAuth 串接（ThesisView 文獻同步）
-- [ ] 旅遊照片持久化（目前僅 ObjectURL，關頁即失效，需後端）
-
-### ⏳ 待開發（後端 FastAPI + MySQL）
-
-- [ ] FastAPI 專案結構 + MySQL Schema
-- [ ] 所有 REST API 端點（依各 TS interface）
-- [ ] JWT 認證（取代 mockLogin）
+- [ ] 旅遊照片上傳持久化（目前 ObjectURL，需後端 file upload endpoint）
 - [ ] ITIS HTML proxy：`GET /api/news/taiwan?date=YYYY-M-D`
-- [ ] 將所有 `// TODO: return apiFetch(...)` 換成真實呼叫
+- [ ] Homepage / Social / Literature API 串接（目前仍用 mock data）
 
 ### ⏳ 待部署
 
@@ -608,19 +611,252 @@ Emits: add, edit(id), delete(id)
 
 ---
 
-## 十一、環境變數
+## 十一、MySQL 資料庫 Schema
 
-| 變數 | 說明 |
-|------|------|
-| `VITE_API_URL` | FastAPI 後端 Base URL，未設定時 fallback `''` |
-| `VITE_ADMIN_EMAIL` | 管理員 Email（`.env.local`，不 commit）|
-| `VITE_ADMIN_PASSWORD` | 管理員密碼（`.env.local`，不 commit）|
+> Engine: InnoDB / Charset: utf8mb4_unicode_ci
+> 由 SQLAlchemy `Base.metadata.create_all()` 在首次啟動時自動建立。
+> 目前 15 張表完全獨立（無 FK），適合單人個人網站。
 
-> `.env.local` 已加入 `.gitignore`，永遠不會被 commit。
+### 正規化說明
+
+| 層級 | 狀態 | 說明 |
+|------|------|------|
+| 1NF | ⚠️ 部分 JSON | `photos` / `tech` / `links` 存為 JSON 字串（`TEXT`），非原子值 |
+| 2NF | ✅ | 無部分依賴 |
+| 3NF | ✅ | 無遞移依賴 |
+| FK  | ❌ | 單用戶系統，無跨表約束需求 |
 
 ---
 
-## 十二、Mock 資料摘要（目前狀態）
+### `users`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `name` | VARCHAR(100) NOT NULL | 顯示名稱 |
+| `email` | VARCHAR(255) NOT NULL UNIQUE | 登入帳號，index |
+| `hashed_password` | VARCHAR(255) NOT NULL | bcrypt hash |
+| `created_at` | DATETIME | server_default NOW() |
+
+---
+
+### `internships`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `company` | VARCHAR(200) NOT NULL | 公司名稱 |
+| `department` | VARCHAR(200) NOT NULL | 部門 + 職稱 |
+| `period` | VARCHAR(100) NOT NULL | 期間（如 `2024/07 – 2024/09`）|
+| `contribution` | TEXT NOT NULL | 貢獻描述 |
+| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+
+---
+
+### `projects`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `title` | VARCHAR(200) NOT NULL | 專案名稱 |
+| `type` | VARCHAR(20) NOT NULL | `finance` \| `code` \| `UIUX` |
+| `tech` | TEXT default `[]` | JSON 字串陣列（技術標籤）|
+| `people` | INT default 1 | 團隊人數 |
+| `summary` | TEXT NOT NULL | 簡介 |
+| `links` | TEXT default `[]` | JSON 字串陣列（GitHub / YouTube URL）|
+
+---
+
+### `cert_items`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `category` | VARCHAR(20) NOT NULL | `language` \| `finance` |
+| `name` | VARCHAR(200) NOT NULL | 證照名稱（如 `TOEIC`）|
+| `level` | VARCHAR(100) NULL | 等級 / 分數（如 `865`、`N4`）|
+| `progress` | INT default 0 | 進度百分比（0–100）|
+
+---
+
+### `academic_milestones`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `label` | VARCHAR(200) NOT NULL | 學校名稱 |
+| `sublabel` | VARCHAR(200) NOT NULL | 科系 |
+| `year` | VARCHAR(10) NOT NULL | 年份 |
+| `x` | DOUBLE NOT NULL | SVG 曲線 x 座標 |
+| `y` | DOUBLE NOT NULL | SVG 曲線 y 座標 |
+
+---
+
+### `future_plans`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `horizon` | VARCHAR(20) NOT NULL | `short` \| `mid-short` \| `mid` |
+| `content` | TEXT NOT NULL | 計畫內容 |
+| `order` | INT default 0 | 顯示順序 |
+
+---
+
+### `experiences`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `type` | VARCHAR(20) NOT NULL | `leadership` \| `club` |
+| `title` | VARCHAR(200) NOT NULL | 職務 / 社團名稱 |
+| `organization` | VARCHAR(200) NOT NULL | 組織 / 學校 |
+| `period` | VARCHAR(100) NOT NULL | 期間 |
+| `contribution` | TEXT NOT NULL | 貢獻描述 |
+| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+
+---
+
+### `travel_entries`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `country` | VARCHAR(100) NOT NULL | 國家（中文，如 `日本`）|
+| `city` | VARCHAR(100) NOT NULL | 城市 |
+| `continent` | VARCHAR(50) NOT NULL | 洲別 key（`Asia` / `Europe` / …）|
+| `visited_at` | VARCHAR(50) NOT NULL | 到訪時間（`YYYY-MM-DD`）|
+| `journal` | TEXT NULL | 旅行日記 |
+| `companions` | TEXT NULL | 同行者（人）|
+| `activities` | TEXT NULL | 做了什麼（事）|
+| `purchases` | TEXT NULL | 購買了什麼（物）|
+| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+
+---
+
+### `social_activities`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `title` | VARCHAR(200) NOT NULL | 活動名稱 |
+| `org` | VARCHAR(200) NOT NULL | 組織 |
+| `role` | VARCHAR(200) NOT NULL | 職務 |
+| `period` | VARCHAR(100) NOT NULL | 期間 |
+| `category` | VARCHAR(5) NOT NULL | `E` \| `S` \| `G` |
+| `sdg_tag` | VARCHAR(100) NULL | SDGs 標籤（如 `SDG 4`）|
+| `description` | TEXT NOT NULL | 活動描述 |
+
+---
+
+### `timeline_events`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `year` | VARCHAR(10) NOT NULL | 年份 |
+| `grade` | VARCHAR(50) NOT NULL | 年級（如 `大二上`）|
+| `award` | VARCHAR(200) NOT NULL | 獎項名稱 |
+| `result` | VARCHAR(100) NOT NULL | 得獎結果（如 `佳作`）|
+
+---
+
+### `literature_works`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `title` | VARCHAR(200) NOT NULL | 作品名稱 |
+| `year` | VARCHAR(10) NOT NULL | 年份 |
+| `award` | VARCHAR(200) NOT NULL | 比賽 / 獎項 |
+| `category` | VARCHAR(50) NOT NULL | 文類（散文 / 新詩 …）|
+| `excerpt` | TEXT NOT NULL | 節錄（首頁卡片顯示）|
+| `full_text` | TEXT NOT NULL | 全文 |
+
+---
+
+### `holdings`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `symbol` | VARCHAR(20) NOT NULL | 股票代碼（如 `00713`）|
+| `name` | VARCHAR(200) NOT NULL | 股票名稱 |
+| `currency` | VARCHAR(5) NOT NULL | `TWD` \| `USD` |
+| `broker` | VARCHAR(100) NOT NULL | 券商（如 `國泰世華`）|
+| `shares` | DOUBLE NOT NULL | 持股數量 |
+| `avg_price` | DOUBLE NOT NULL | 平均成本價 |
+| `market_price` | DOUBLE NOT NULL | 現價（手動更新）|
+| `dividend` | DOUBLE default 0 | 累計股息 |
+
+> 計算欄位（不存 DB，由 Pydantic `@computed_field` 回傳）：
+> `currentValue = shares × market_price`、`pnl = (market_price − avg_price) × shares`、`returnRate = pnl / (avg_price × shares) × 100`
+
+---
+
+### `thesis_notes`（singleton）
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | 永遠只有 1 筆 |
+| `content` | TEXT NOT NULL | 碩論筆記 Markdown |
+| `updated_at` | DATETIME | server_default NOW() + onupdate |
+
+---
+
+### `thesis_ideas`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `title` | VARCHAR(200) NOT NULL | 便利貼標題 |
+| `content` | TEXT NOT NULL | 想法內容 |
+| `status` | VARCHAR(20) NOT NULL default `pending` | `pending` \| `approved` \| `rejected` |
+| `created_at` | DATETIME | server_default NOW() |
+
+---
+
+### `thesis_papers`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `id` | INT PK AUTO | |
+| `topic` | VARCHAR(100) NOT NULL | 主題標籤（如 `LLM`）|
+| `name` | TEXT NOT NULL | 論文完整標題 |
+| `journal` | VARCHAR(300) NOT NULL | 期刊名稱 |
+| `authors` | VARCHAR(500) NOT NULL | 作者列表 |
+| `year` | INT NOT NULL | 發表年份 |
+| `purpose` | TEXT NOT NULL | 研究目的 |
+| `contribution` | TEXT NOT NULL | 研究貢獻 |
+
+---
+
+## 十二、環境變數
+
+### 前端（`src/.env.local`，不 commit）
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `VITE_API_URL` | `http://localhost:8000` | FastAPI Base URL |
+
+### 後端（`backend/.env`，不 commit）
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `DATABASE_URL` | `mysql+pymysql://root:@localhost:3306/daniellife` | MySQL 連線字串 |
+| `SECRET_KEY` | `change-me-…` | JWT 簽名金鑰（32 字元以上）|
+| `ALGORITHM` | `HS256` | JWT 演算法 |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080`（7天）| Token 有效期 |
+| `ADMIN_EMAIL` | `admin@daniellife.com` | DB 無用戶時的 fallback 帳號 |
+| `ADMIN_PASSWORD` | `changeme` | DB 無用戶時的 fallback 密碼 |
+| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS allow origin |
+| `ITIS_BASE_URL` | ITIS URL | 台灣新聞 proxy 來源 |
+
+> 兩個 `.env` 檔均已加入各自 `.gitignore`，永遠不會被 commit。
+
+---
+
+## 十三、Mock 資料摘要（目前狀態）
 
 | 資料 | 內容 |
 |------|------|
@@ -636,7 +872,7 @@ Emits: add, edit(id), delete(id)
 
 ---
 
-## 十三、已知限制與注意事項
+## 十四、已知限制與注意事項
 
 | 項目 | 說明 |
 |------|------|
