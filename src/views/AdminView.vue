@@ -97,6 +97,61 @@
         @delete="deleteItem"
       />
 
+      <AdminTable
+        v-if="current === 'academic'"
+        title="求學歷程"
+        :columns="['學校', '科系', '期間', 'GPA', '排名', '順序']"
+        :rows="academics.map(a => [a.school, a.major, a.period, a.gpa, a.rank, String(a.sortOrder ?? 0)])"
+        :ids="academics.map(a => a.id)"
+        @add="openAdd"
+        @edit="openEdit"
+        @delete="deleteItem"
+      />
+
+      <AdminTable
+        v-if="current === 'futureplans'"
+        title="未來規劃"
+        :columns="['階段', '標題', '副標題', '順序']"
+        :rows="futurePlans.map(p => [p.phase, p.title, p.subtitle, String(p.sortOrder ?? 0)])"
+        :ids="futurePlans.map(p => p.id)"
+        @add="openAdd"
+        @edit="openEdit"
+        @delete="deleteItem"
+      />
+
+      <AdminTable
+        v-if="current === 'langcerts'"
+        title="語言證照"
+        :columns="['語言', '名稱', '成績', '進度%']"
+        :rows="langCerts.map(c => [c.lang, c.name, c.score, String(c.pct)])"
+        :ids="langCerts.map(c => c.id)"
+        @add="openAdd"
+        @edit="openEdit"
+        @delete="deleteItem"
+      />
+
+      <AdminTable
+        v-if="current === 'certgroups'"
+        title="財會/資訊證照"
+        :columns="['領域', '類別', '項目數', '順序']"
+        :rows="certGroups.map(g => [g.domain, g.category, String(g.items.length), String(g.sortOrder)])"
+        :ids="certGroups.map(g => g.id)"
+        @add="openAdd"
+        @edit="openEdit"
+        @delete="deleteItem"
+      />
+
+      <AdminTable
+        v-if="current === 'travel'"
+        title="旅遊記錄"
+        :columns="['國家', '城市', '洲', '日期']"
+        :rows="travelEntries.map(t => [t.country, t.city, t.continent, t.visitedAt])"
+        :ids="travelEntries.map(t => t.id)"
+        @add="openAdd"
+        @edit="openEdit"
+        @delete="deleteItem"
+      />
+
     </main>
 
     <!-- Edit / Add Modal -->
@@ -147,9 +202,14 @@ import AdminTable from '@/components/admin/AdminTable.vue'
 import {
   getInternships, createInternship, updateInternship, deleteInternship,
   getProjects,    createProject,    updateProject,    deleteProject,
+  getAcademicMilestones, createAcademicMilestone, updateAcademicMilestone, deleteAcademicMilestone,
+  getFuturePlans, createFuturePlan, updateFuturePlan, deleteFuturePlan,
+  getLangCerts,   createLangCert,   updateLangCert,   deleteLangCert,
+  getCertGroups,  createCertGroup,  updateCertGroup,  deleteCertGroup,
 } from '@/api/homepage'
 import {
   getExperiences, createExperience, updateExperience, deleteExperience,
+  getTravelEntries, createTravelEntry, updateTravelEntry, deleteTravelEntry,
 } from '@/api/activities'
 import {
   getSocialActivities, createSocialActivity, updateSocialActivity, deleteSocialActivity,
@@ -163,8 +223,8 @@ import {
 import {
   getHoldings, createHolding, updateHolding, deleteHolding,
 } from '@/api/finance'
-import type { Internship, Project } from '@/types/homepage'
-import type { Experience } from '@/types/activities'
+import type { Internship, Project, AcademicMilestone, FuturePlan, LangCertAdmin, CertGroupAdmin } from '@/types/homepage'
+import type { Experience, TravelEntry } from '@/types/activities'
 import type { SocialActivity } from '@/types/social'
 import type { LiteratureWork } from '@/types/literature'
 import type { ThesisPaper } from '@/types/thesis'
@@ -173,7 +233,10 @@ import type { Holding } from '@/types/finance'
 const router = useRouter()
 const auth = useAuthStore()
 
-type SectionKey = 'internships' | 'projects' | 'activities' | 'social' | 'literature' | 'papers' | 'holdings'
+type SectionKey =
+  | 'internships' | 'projects' | 'activities' | 'social'
+  | 'literature' | 'papers' | 'holdings'
+  | 'academic' | 'futureplans' | 'langcerts' | 'certgroups' | 'travel'
 
 const sections: { key: SectionKey; label: string }[] = [
   { key: 'internships', label: '實習經歷' },
@@ -183,6 +246,11 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: 'literature',  label: '文學作品' },
   { key: 'papers',      label: '論文文獻' },
   { key: 'holdings',    label: '持股明細' },
+  { key: 'academic',    label: '求學歷程' },
+  { key: 'futureplans', label: '未來規劃' },
+  { key: 'langcerts',   label: '語言證照' },
+  { key: 'certgroups',  label: '財會/資訊證照' },
+  { key: 'travel',      label: '旅遊記錄' },
 ]
 
 const current = ref<SectionKey>('internships')
@@ -196,6 +264,11 @@ const socialActivities = ref<SocialActivity[]>([])
 const literatureWorks  = ref<LiteratureWork[]>([])
 const papers           = ref<ThesisPaper[]>([])
 const holdings         = ref<Holding[]>([])
+const academics        = ref<AcademicMilestone[]>([])
+const futurePlans      = ref<FuturePlan[]>([])
+const langCerts        = ref<LangCertAdmin[]>([])
+const certGroups       = ref<CertGroupAdmin[]>([])
+const travelEntries    = ref<TravelEntry[]>([])
 
 onMounted(async () => {
   ;[
@@ -206,6 +279,11 @@ onMounted(async () => {
     literatureWorks.value,
     papers.value,
     holdings.value,
+    academics.value,
+    futurePlans.value,
+    langCerts.value,
+    certGroups.value,
+    travelEntries.value,
   ] = await Promise.all([
     getInternships(),
     getProjects(),
@@ -214,6 +292,11 @@ onMounted(async () => {
     getLiteratureWorks(),
     getThesisPapers(),
     getHoldings(),
+    getAcademicMilestones(),
+    getFuturePlans(),
+    getLangCerts(),
+    getCertGroups(),
+    getTravelEntries(),
   ])
 })
 
@@ -295,6 +378,44 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'marketPrice', label: '市價', type: 'number' },
     { key: 'dividend',    label: '股利', type: 'number' },
   ],
+  academic: [
+    { key: 'school',    label: '學校' },
+    { key: 'major',     label: '科系' },
+    { key: 'period',    label: '期間', placeholder: '2021 – 2024' },
+    { key: 'gpa',       label: 'GPA', placeholder: '4.26/4.30' },
+    { key: 'rank',      label: '排名', placeholder: '3/71' },
+    { key: 'sortOrder', label: '顯示順序', type: 'number' },
+    { key: 'facts',     label: '重點事蹟（每行一條）', type: 'textarea' },
+  ],
+  futureplans: [
+    { key: 'phase',     label: '階段', placeholder: 'short / mid-short / mid' },
+    { key: 'title',     label: '標題', placeholder: '短期' },
+    { key: 'subtitle',  label: '副標題', placeholder: '近一年' },
+    { key: 'sortOrder', label: '顯示順序', type: 'number' },
+    { key: 'items',     label: '項目（每行一條）', type: 'textarea' },
+  ],
+  langcerts: [
+    { key: 'lang',  label: '語言', placeholder: 'en / jp' },
+    { key: 'name',  label: '名稱', placeholder: 'TOEIC / JLPT' },
+    { key: 'score', label: '成績', placeholder: '865 / N4' },
+    { key: 'pct',   label: '進度百分比 (0–100)', type: 'number' },
+  ],
+  certgroups: [
+    { key: 'domain',    label: '領域', placeholder: 'finance / it' },
+    { key: 'category',  label: '類別', placeholder: '國際證照' },
+    { key: 'sortOrder', label: '顯示順序', type: 'number' },
+    { key: 'items',     label: '證照項目（每行一條）', type: 'textarea' },
+  ],
+  travel: [
+    { key: 'country',    label: '國家' },
+    { key: 'city',       label: '城市' },
+    { key: 'continent',  label: '洲', placeholder: 'Asia / Europe / Americas / Africa / Australia' },
+    { key: 'visitedAt',  label: '造訪日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'companions', label: '同行者（可空）' },
+    { key: 'activities', label: '活動（可空）' },
+    { key: 'purchases',  label: '購物（可空）' },
+    { key: 'journal',    label: '日記（可空）', type: 'textarea' },
+  ],
 }
 
 const modalFields = computed<FieldDef[]>(() => fieldMap[current.value] ?? [])
@@ -369,6 +490,39 @@ function openEdit(id: number) {
       broker: item.broker, shares: String(item.shares),
       avgPrice: String(item.avgPrice), marketPrice: String(item.marketPrice),
       dividend: String(item.dividend),
+    })
+  } else if (current.value === 'academic') {
+    const item = academics.value.find((a) => a.id === id)!
+    Object.assign(fd, {
+      school: item.school, major: item.major, period: item.period,
+      gpa: item.gpa, rank: item.rank,
+      sortOrder: String(item.sortOrder ?? 0),
+      facts: item.facts.join('\n'),
+    })
+  } else if (current.value === 'futureplans') {
+    const item = futurePlans.value.find((p) => p.id === id)!
+    Object.assign(fd, {
+      phase: item.phase, title: item.title, subtitle: item.subtitle,
+      sortOrder: String(item.sortOrder ?? 0),
+      items: item.items.join('\n'),
+    })
+  } else if (current.value === 'langcerts') {
+    const item = langCerts.value.find((c) => c.id === id)!
+    Object.assign(fd, { lang: item.lang, name: item.name, score: item.score, pct: String(item.pct) })
+  } else if (current.value === 'certgroups') {
+    const item = certGroups.value.find((g) => g.id === id)!
+    Object.assign(fd, {
+      domain: item.domain, category: item.category,
+      sortOrder: String(item.sortOrder),
+      items: item.items.join('\n'),
+    })
+  } else if (current.value === 'travel') {
+    const item = travelEntries.value.find((t) => t.id === id)!
+    Object.assign(fd, {
+      country: item.country, city: item.city, continent: item.continent,
+      visitedAt: item.visitedAt, companions: item.companions ?? '',
+      activities: item.activities ?? '', purchases: item.purchases ?? '',
+      journal: item.journal ?? '',
     })
   }
 
@@ -488,6 +642,77 @@ async function saveModal() {
       } else {
         holdings.value.push(await createHolding(body))
       }
+
+    } else if (current.value === 'academic') {
+      const body = {
+        school: fd.school, major: fd.major, period: fd.period,
+        gpa: fd.gpa, rank: fd.rank,
+        facts: fd.facts.split('\n').map((s) => s.trim()).filter(Boolean),
+        sortOrder: Number(fd.sortOrder) || 0,
+      }
+      if (isEdit) {
+        const updated = await updateAcademicMilestone(editId.value!, body)
+        replaceInList(academics.value, updated)
+      } else {
+        academics.value.push(await createAcademicMilestone(body))
+      }
+
+    } else if (current.value === 'futureplans') {
+      const body = {
+        phase: fd.phase as FuturePlan['phase'],
+        title: fd.title, subtitle: fd.subtitle,
+        items: fd.items.split('\n').map((s) => s.trim()).filter(Boolean),
+        sortOrder: Number(fd.sortOrder) || 0,
+      }
+      if (isEdit) {
+        const updated = await updateFuturePlan(editId.value!, body)
+        replaceInList(futurePlans.value, updated)
+      } else {
+        futurePlans.value.push(await createFuturePlan(body))
+      }
+
+    } else if (current.value === 'langcerts') {
+      const body = {
+        lang: fd.lang as LangCertAdmin['lang'],
+        name: fd.name, score: fd.score, pct: Number(fd.pct) || 0,
+      }
+      if (isEdit) {
+        const updated = await updateLangCert(editId.value!, body)
+        replaceInList(langCerts.value, updated)
+      } else {
+        langCerts.value.push(await createLangCert(body))
+      }
+
+    } else if (current.value === 'certgroups') {
+      const body = {
+        domain: fd.domain as CertGroupAdmin['domain'],
+        category: fd.category,
+        items: fd.items.split('\n').map((s) => s.trim()).filter(Boolean),
+        sortOrder: Number(fd.sortOrder) || 0,
+      }
+      if (isEdit) {
+        const updated = await updateCertGroup(editId.value!, body)
+        replaceInList(certGroups.value, updated)
+      } else {
+        certGroups.value.push(await createCertGroup(body))
+      }
+
+    } else if (current.value === 'travel') {
+      const body = {
+        country: fd.country, city: fd.city, continent: fd.continent,
+        visitedAt: fd.visitedAt,
+        companions: fd.companions || undefined,
+        activities: fd.activities || undefined,
+        purchases: fd.purchases || undefined,
+        journal: fd.journal || undefined,
+        photos: [],
+      }
+      if (isEdit) {
+        const updated = await updateTravelEntry(editId.value!, body)
+        replaceInList(travelEntries.value, updated)
+      } else {
+        travelEntries.value.push(await createTravelEntry(body))
+      }
     }
 
     modalOpen.value = false
@@ -521,6 +746,16 @@ async function deleteItem(id: number) {
       await deleteThesisPaper(id); papers.value = papers.value.filter((p) => p.id !== id)
     } else if (current.value === 'holdings') {
       await deleteHolding(id); holdings.value = holdings.value.filter((h) => h.id !== id)
+    } else if (current.value === 'academic') {
+      await deleteAcademicMilestone(id); academics.value = academics.value.filter((a) => a.id !== id)
+    } else if (current.value === 'futureplans') {
+      await deleteFuturePlan(id); futurePlans.value = futurePlans.value.filter((p) => p.id !== id)
+    } else if (current.value === 'langcerts') {
+      await deleteLangCert(id); langCerts.value = langCerts.value.filter((c) => c.id !== id)
+    } else if (current.value === 'certgroups') {
+      await deleteCertGroup(id); certGroups.value = certGroups.value.filter((g) => g.id !== id)
+    } else if (current.value === 'travel') {
+      await deleteTravelEntry(id); travelEntries.value = travelEntries.value.filter((t) => t.id !== id)
     }
   } catch {
     alert('刪除失敗，請再試一次')

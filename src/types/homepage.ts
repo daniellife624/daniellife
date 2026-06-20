@@ -36,9 +36,25 @@ export interface LangCert {
   pct: number
 }
 
+export interface LangCertAdmin {
+  id: number
+  lang: 'en' | 'jp'
+  name: string
+  score: string
+  pct: number
+}
+
 export interface CertGroup {
   category: string
   items: string[]
+}
+
+export interface CertGroupAdmin {
+  id: number
+  domain: 'finance' | 'it'
+  category: string
+  items: string[]
+  sortOrder: number
 }
 
 export interface CertData {
@@ -55,6 +71,7 @@ export interface AcademicMilestone {
   gpa: string
   rank: string
   facts: string[]
+  sortOrder?: number
 }
 
 export type PlanPhase = 'short' | 'mid-short' | 'mid'
@@ -65,4 +82,5 @@ export interface FuturePlan {
   title: string
   subtitle: string
   items: string[]
+  sortOrder?: number
 }

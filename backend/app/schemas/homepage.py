@@ -59,7 +59,7 @@ class ProjectIn(BaseModel):
     createdAt: str = ""
 
 
-# ── CertData ─────────────────────────────────────────────────────
+# ── CertData (public read) ────────────────────────────────────────
 class LangCertOut(BaseModel):
     name: str
     score: str
@@ -82,6 +82,37 @@ class CertDataOut(BaseModel):
     it: list[CertGroupOut]
 
 
+# ── CertData (admin CRUD) ─────────────────────────────────────────
+class LangCertAdminOut(BaseModel):
+    id: int
+    lang: str
+    name: str
+    score: str
+    pct: float
+
+
+class LangCertIn(BaseModel):
+    lang: str            # 'en' | 'jp'
+    name: str
+    score: str
+    pct: float = 0.0
+
+
+class CertGroupAdminOut(BaseModel):
+    id: int
+    domain: str          # 'finance' | 'it'
+    category: str
+    items: list[str] = []
+    sortOrder: int = 0
+
+
+class CertGroupIn(BaseModel):
+    domain: str
+    category: str
+    items: list[str] = []
+    sortOrder: int = 0
+
+
 # ── AcademicMilestone ────────────────────────────────────────────
 class AcademicMilestoneOut(BaseModel):
     id: int
@@ -91,6 +122,7 @@ class AcademicMilestoneOut(BaseModel):
     gpa: str
     rank: str
     facts: list[str] = []
+    sortOrder: int = 0
 
 
 class AcademicMilestoneIn(BaseModel):
@@ -100,7 +132,7 @@ class AcademicMilestoneIn(BaseModel):
     gpa: str = ""
     rank: str = ""
     facts: list[str] = []
-    sort_order: int = 0
+    sortOrder: int = 0
 
 
 # ── FuturePlan ───────────────────────────────────────────────────
@@ -110,6 +142,7 @@ class FuturePlanOut(BaseModel):
     title: str
     subtitle: str
     items: list[str] = []
+    sortOrder: int = 0
 
 
 class FuturePlanIn(BaseModel):
@@ -117,4 +150,4 @@ class FuturePlanIn(BaseModel):
     title: str
     subtitle: str
     items: list[str] = []
-    sort_order: int = 0
+    sortOrder: int = 0

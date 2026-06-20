@@ -21,6 +21,15 @@ export async function deleteExperience(id: number): Promise<void> {
 export async function getTravelEntries(): Promise<TravelEntry[]> {
   return apiFetch<TravelEntry[]>('/api/activities/travel')
 }
+export async function createTravelEntry(body: Omit<TravelEntry, 'id'>): Promise<TravelEntry> {
+  return apiFetch<TravelEntry>('/api/activities/travel', { method: 'POST', body: JSON.stringify(body) })
+}
+export async function updateTravelEntry(id: number, body: Omit<TravelEntry, 'id'>): Promise<TravelEntry> {
+  return apiFetch<TravelEntry>(`/api/activities/travel/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+}
+export async function deleteTravelEntry(id: number): Promise<void> {
+  await apiFetch(`/api/activities/travel/${id}`, { method: 'DELETE' })
+}
 
 export function groupByContinent(entries: TravelEntry[]): Continent[] {
   const continents: Continent[] = [

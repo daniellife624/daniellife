@@ -139,7 +139,7 @@ def delete_project(item_id: int, db: Session = Depends(get_db), _=Depends(get_cu
     db.delete(obj); db.commit()
 
 
-# ── Certs ─────────────────────────────────────────────────────────
+# ── Certs (public) ────────────────────────────────────────────────
 @router.get("/certs", response_model=s.CertDataOut)
 def get_certs(db: Session = Depends(get_db)):
     lang_en = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
@@ -153,6 +153,84 @@ def get_certs(db: Session = Depends(get_db)):
     return s.CertDataOut(language=s.LanguageData(en=lang_en, jp=lang_jp), finance=finance, it=it)
 
 
+# ── Lang Certs (admin CRUD) ───────────────────────────────────────
+def _lang_cert_out(r: m.LanguageCert) -> s.LangCertAdminOut:
+    return s.LangCertAdminOut(id=r.id, lang=r.lang, name=r.name, score=r.score, pct=r.pct)
+
+
+@router.get("/lang-certs", response_model=list[s.LangCertAdminOut])
+def list_lang_certs(db: Session = Depends(get_db)):
+    return [_lang_cert_out(r) for r in db.query(m.LanguageCert).all()]
+
+
+@router.post("/lang-certs", response_model=s.LangCertAdminOut)
+def create_lang_cert(body: s.LangCertIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = m.LanguageCert(lang=body.lang, name=body.name, score=body.score, pct=body.pct)
+    db.add(obj); db.commit(); db.refresh(obj)
+    return _lang_cert_out(obj)
+
+
+@router.put("/lang-certs/{item_id}", response_model=s.LangCertAdminOut)
+def update_lang_cert(item_id: int, body: s.LangCertIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.LanguageCert).filter(m.LanguageCert.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.lang = body.lang; obj.name = body.name; obj.score = body.score; obj.pct = body.pct
+    db.commit(); db.refresh(obj)
+    return _lang_cert_out(obj)
+
+
+@router.delete("/lang-certs/{item_id}", status_code=204)
+def delete_lang_cert(item_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.LanguageCert).filter(m.LanguageCert.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    db.delete(obj); db.commit()
+
+
+# ── Cert Groups (admin CRUD) ──────────────────────────────────────
+def _cert_group_out(r: m.CertGroup) -> s.CertGroupAdminOut:
+    return s.CertGroupAdminOut(
+        id=r.id, domain=r.domain, category=r.category,
+        items=json.loads(r.items) if r.items else [],
+        sortOrder=r.sort_order,
+    )
+
+
+@router.get("/cert-groups", response_model=list[s.CertGroupAdminOut])
+def list_cert_groups(db: Session = Depends(get_db)):
+    return [_cert_group_out(r) for r in db.query(m.CertGroup).order_by(m.CertGroup.sort_order).all()]
+
+
+@router.post("/cert-groups", response_model=s.CertGroupAdminOut)
+def create_cert_group(body: s.CertGroupIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = m.CertGroup(
+        domain=body.domain, category=body.category,
+        items=json.dumps(body.items, ensure_ascii=False), sort_order=body.sortOrder,
+    )
+    db.add(obj); db.commit(); db.refresh(obj)
+    return _cert_group_out(obj)
+
+
+@router.put("/cert-groups/{item_id}", response_model=s.CertGroupAdminOut)
+def update_cert_group(item_id: int, body: s.CertGroupIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.CertGroup).filter(m.CertGroup.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.domain = body.domain; obj.category = body.category
+    obj.items = json.dumps(body.items, ensure_ascii=False); obj.sort_order = body.sortOrder
+    db.commit(); db.refresh(obj)
+    return _cert_group_out(obj)
+
+
+@router.delete("/cert-groups/{item_id}", status_code=204)
+def delete_cert_group(item_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.CertGroup).filter(m.CertGroup.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    db.delete(obj); db.commit()
+
+
 # ── Academic ─────────────────────────────────────────────────────
 @router.get("/academic", response_model=list[s.AcademicMilestoneOut])
 def list_academic(db: Session = Depends(get_db)):
@@ -160,6 +238,7 @@ def list_academic(db: Session = Depends(get_db)):
     return [s.AcademicMilestoneOut(
         id=r.id, school=r.school, major=r.major, period=r.period,
         gpa=r.gpa, rank=r.rank, facts=json.loads(r.facts) if r.facts else [],
+        sortOrder=r.sort_order,
     ) for r in rows]
 
 
@@ -168,12 +247,12 @@ def create_academic(body: s.AcademicMilestoneIn, db: Session = Depends(get_db), 
     obj = m.AcademicMilestone(
         school=body.school, major=body.major, period=body.period,
         gpa=body.gpa, rank=body.rank,
-        facts=json.dumps(body.facts, ensure_ascii=False), sort_order=body.sort_order,
+        facts=json.dumps(body.facts, ensure_ascii=False), sort_order=body.sortOrder,
     )
     db.add(obj); db.commit(); db.refresh(obj)
     return s.AcademicMilestoneOut(
         id=obj.id, school=obj.school, major=obj.major, period=obj.period,
-        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts),
+        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts), sortOrder=obj.sort_order,
     )
 
 
@@ -184,11 +263,11 @@ def update_academic(item_id: int, body: s.AcademicMilestoneIn, db: Session = Dep
         raise HTTPException(404, "Not found")
     obj.school = body.school; obj.major = body.major; obj.period = body.period
     obj.gpa = body.gpa; obj.rank = body.rank
-    obj.facts = json.dumps(body.facts, ensure_ascii=False); obj.sort_order = body.sort_order
+    obj.facts = json.dumps(body.facts, ensure_ascii=False); obj.sort_order = body.sortOrder
     db.commit(); db.refresh(obj)
     return s.AcademicMilestoneOut(
         id=obj.id, school=obj.school, major=obj.major, period=obj.period,
-        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts),
+        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts), sortOrder=obj.sort_order,
     )
 
 
@@ -206,7 +285,7 @@ def list_future_plans(db: Session = Depends(get_db)):
     rows = db.query(m.FuturePlan).order_by(m.FuturePlan.sort_order).all()
     return [s.FuturePlanOut(
         id=r.id, phase=r.phase, title=r.title, subtitle=r.subtitle,
-        items=json.loads(r.items) if r.items else [],
+        items=json.loads(r.items) if r.items else [], sortOrder=r.sort_order,
     ) for r in rows]
 
 
@@ -214,10 +293,10 @@ def list_future_plans(db: Session = Depends(get_db)):
 def create_future_plan(body: s.FuturePlanIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = m.FuturePlan(
         phase=body.phase, title=body.title, subtitle=body.subtitle,
-        items=json.dumps(body.items, ensure_ascii=False), sort_order=body.sort_order,
+        items=json.dumps(body.items, ensure_ascii=False), sort_order=body.sortOrder,
     )
     db.add(obj); db.commit(); db.refresh(obj)
-    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items))
+    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items), sortOrder=obj.sort_order)
 
 
 @router.put("/future-plans/{item_id}", response_model=s.FuturePlanOut)
@@ -226,9 +305,9 @@ def update_future_plan(item_id: int, body: s.FuturePlanIn, db: Session = Depends
     if not obj:
         raise HTTPException(404, "Not found")
     obj.phase = body.phase; obj.title = body.title; obj.subtitle = body.subtitle
-    obj.items = json.dumps(body.items, ensure_ascii=False); obj.sort_order = body.sort_order
+    obj.items = json.dumps(body.items, ensure_ascii=False); obj.sort_order = body.sortOrder
     db.commit(); db.refresh(obj)
-    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items))
+    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items), sortOrder=obj.sort_order)
 
 
 @router.delete("/future-plans/{item_id}", status_code=204)
