@@ -615,7 +615,7 @@ Emits: add, edit(id), delete(id)
 
 > Engine: InnoDB / Charset: utf8mb4_unicode_ci
 > 由 SQLAlchemy `Base.metadata.create_all()` 在首次啟動時自動建立。
-> 目前 15 張表完全獨立（無 FK），適合單人個人網站。
+> 15 張表，`timeline_events.work_id → literature_works.id` 為唯一 FK；其餘無跨表約束。
 
 ### 正規化說明
 
@@ -624,7 +624,7 @@ Emits: add, edit(id), delete(id)
 | 1NF | ⚠️ 部分 JSON | `photos` / `tech` / `links` 存為 JSON 字串（`TEXT`），非原子值 |
 | 2NF | ✅ | 無部分依賴 |
 | 3NF | ✅ | 無遞移依賴 |
-| FK  | ❌ | 單用戶系統，無跨表約束需求 |
+| FK  | ⚠️ 部分 FK | `timeline_events.work_id → literature_works.id`（nullable）；其餘單用戶無需跨表約束 |
 
 ---
 
@@ -647,9 +647,12 @@ Emits: add, edit(id), delete(id)
 | `id` | INT PK AUTO | |
 | `company` | VARCHAR(200) NOT NULL | 公司名稱 |
 | `department` | VARCHAR(200) NOT NULL | 部門 + 職稱 |
-| `period` | VARCHAR(100) NOT NULL | 期間（如 `2024/07 – 2024/09`）|
+| `start_date` | DATE NULL | 開始月份（日固定為 01）|
+| `end_date` | DATE NULL | 結束月份；NULL 表示「至今」|
 | `contribution` | TEXT NOT NULL | 貢獻描述 |
 | `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+
+> API 回傳額外計算欄位 `period: str`（如 `"2024/07 – 2024/09"`），由 start/end 格式化。
 
 ---
 
@@ -711,9 +714,13 @@ Emits: add, edit(id), delete(id)
 | `type` | VARCHAR(20) NOT NULL | `leadership` \| `club` |
 | `title` | VARCHAR(200) NOT NULL | 職務 / 社團名稱 |
 | `organization` | VARCHAR(200) NOT NULL | 組織 / 學校 |
-| `period` | VARCHAR(100) NOT NULL | 期間 |
+| `start_date` | DATE NULL | 開始月份（日固定為 01）|
+| `end_date` | DATE NULL | 結束月份；NULL 表示「至今」|
 | `contribution` | TEXT NOT NULL | 貢獻描述 |
 | `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+
+> API 接受 `period: str`（前端傳 `"YYYY/MM – YYYY/MM"`），後端自動拆解成 start/end 儲存。
+> 回傳時亦包含 `startDate` / `endDate`（ISO）與計算欄位 `period`。
 
 ---
 
@@ -725,7 +732,7 @@ Emits: add, edit(id), delete(id)
 | `country` | VARCHAR(100) NOT NULL | 國家（中文，如 `日本`）|
 | `city` | VARCHAR(100) NOT NULL | 城市 |
 | `continent` | VARCHAR(50) NOT NULL | 洲別 key（`Asia` / `Europe` / …）|
-| `visited_at` | VARCHAR(50) NOT NULL | 到訪時間（`YYYY-MM-DD`）|
+| `visited_at` | DATE NOT NULL | 到訪日期；API 回傳 ISO `"YYYY-MM-DD"` |
 | `journal` | TEXT NULL | 旅行日記 |
 | `companions` | TEXT NULL | 同行者（人）|
 | `activities` | TEXT NULL | 做了什麼（事）|
@@ -739,13 +746,15 @@ Emits: add, edit(id), delete(id)
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | `id` | INT PK AUTO | |
-| `title` | VARCHAR(200) NOT NULL | 活動名稱 |
-| `org` | VARCHAR(200) NOT NULL | 組織 |
-| `role` | VARCHAR(200) NOT NULL | 職務 |
-| `period` | VARCHAR(100) NOT NULL | 期間 |
-| `category` | VARCHAR(5) NOT NULL | `E` \| `S` \| `G` |
-| `sdg_tag` | VARCHAR(100) NULL | SDGs 標籤（如 `SDG 4`）|
-| `description` | TEXT NOT NULL | 活動描述 |
+| `name` | VARCHAR(200) NOT NULL | 活動名稱 |
+| `organization` | VARCHAR(200) NOT NULL | 主辦 / 合作組織 |
+| `esg_type` | VARCHAR(20) NOT NULL | `Environmental` \| `Social` \| `Governance` |
+| `sdg_numbers` | TEXT default `[]` | JSON 整數陣列（如 `[3, 13]`），SDG 編號 1–17 |
+| `period_from` | DATE NOT NULL | 開始日期 |
+| `period_to` | DATE NULL | 結束日期；NULL 表示單日或持續中 |
+| `contribution` | TEXT NOT NULL | 具體貢獻 |
+| `reflection` | TEXT NOT NULL default `""` | 個人反思 |
+| `photo_url` | VARCHAR(500) NULL | 封面圖片 URL |
 
 ---
 
@@ -754,10 +763,11 @@ Emits: add, edit(id), delete(id)
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | `id` | INT PK AUTO | |
-| `year` | VARCHAR(10) NOT NULL | 年份 |
-| `grade` | VARCHAR(50) NOT NULL | 年級（如 `大二上`）|
-| `award` | VARCHAR(200) NOT NULL | 獎項名稱 |
-| `result` | VARCHAR(100) NOT NULL | 得獎結果（如 `佳作`）|
+| `grade_label` | VARCHAR(100) NOT NULL | 就讀階段（如 `高中 / 高一`）|
+| `award_title` | VARCHAR(200) NOT NULL | 獎項 / 賽事名稱 |
+| `result` | VARCHAR(100) NOT NULL | 得獎結果（如 `散文組 佳作`）|
+| `date` | DATE NOT NULL | 比賽 / 頒獎日期；API 回傳 `"YYYY.MM.DD"` |
+| `work_id` | INT NULL FK | → `literature_works.id`；可連結對應作品 |
 
 ---
 
@@ -767,11 +777,11 @@ Emits: add, edit(id), delete(id)
 |------|------|------|
 | `id` | INT PK AUTO | |
 | `title` | VARCHAR(200) NOT NULL | 作品名稱 |
-| `year` | VARCHAR(10) NOT NULL | 年份 |
-| `award` | VARCHAR(200) NOT NULL | 比賽 / 獎項 |
-| `category` | VARCHAR(50) NOT NULL | 文類（散文 / 新詩 …）|
-| `excerpt` | TEXT NOT NULL | 節錄（首頁卡片顯示）|
-| `full_text` | TEXT NOT NULL | 全文 |
+| `age_written` | INT NULL | 創作時年齡 |
+| `period` | DATE NULL | 創作月份（日固定 01）；API 回傳 `"YYYY.MM"` |
+| `awards` | TEXT NOT NULL default `""` | 得獎紀錄（完整描述字串）|
+| `summary` | TEXT NOT NULL | 摘要 / 節錄（卡片顯示）|
+| `full_text` | TEXT NULL | 全文（可選）|
 
 ---
 
