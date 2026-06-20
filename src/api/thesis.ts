@@ -42,3 +42,16 @@ export async function getThesisPapers(topic = '', journal = '', keyword = ''): P
   const qs = params.toString() ? `?${params}` : ''
   return apiFetch<ThesisPaper[]>(`/api/thesis/papers${qs}`)
 }
+export async function createThesisPaper(body: Omit<ThesisPaper, 'id'>): Promise<ThesisPaper> {
+  return apiFetch<ThesisPaper>('/api/thesis/papers', {
+    method: 'POST', body: JSON.stringify(body),
+  })
+}
+export async function updateThesisPaper(id: number, body: Omit<ThesisPaper, 'id'>): Promise<ThesisPaper> {
+  return apiFetch<ThesisPaper>(`/api/thesis/papers/${id}`, {
+    method: 'PUT', body: JSON.stringify(body),
+  })
+}
+export async function deleteThesisPaper(id: number): Promise<void> {
+  await apiFetch(`/api/thesis/papers/${id}`, { method: 'DELETE' })
+}

@@ -10,8 +10,8 @@ export interface TimelineEvent {
 export interface LiteratureWork {
   id: number
   title: string
-  ageWritten: number
-  period: string
+  ageWritten?: number
+  period?: string
   awards: string
   summary: string
   fullText?: string

@@ -19,8 +19,7 @@ class InternshipIn(BaseModel):
     company: str
     dept: str
     role: str = "實習生"
-    startDate: Optional[str] = None
-    endDate: Optional[str] = None
+    period: str = ""           # "YYYY/MM – YYYY/MM" — parsed server-side
     contribution: str
     photoUrl: Optional[str] = None
 

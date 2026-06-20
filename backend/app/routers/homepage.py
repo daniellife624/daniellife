@@ -23,6 +23,16 @@ def _parse_date(st: str | None) -> date | None:
         return None
 
 
+def _parse_period(period: str):
+    sep = "–" if "–" in period else "-"
+    parts = [p.strip() for p in period.split(sep, 1)]
+    start = _parse_date(parts[0])
+    end = None
+    if len(parts) > 1 and parts[1] not in ("至今", "present", "now", ""):
+        end = _parse_date(parts[1])
+    return start, end
+
+
 def _fmt_period(start: date | None, end: date | None) -> str:
     if start is None:
         return ""
@@ -57,9 +67,10 @@ def list_internships(db: Session = Depends(get_db)):
 
 @router.post("/internships", response_model=s.InternshipOut)
 def create_internship(body: s.InternshipIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    start, end = _parse_period(body.period)
     obj = m.Internship(
         company=body.company, dept=body.dept, role=body.role,
-        start_date=_parse_date(body.startDate), end_date=_parse_date(body.endDate),
+        start_date=start, end_date=end,
         contribution=body.contribution, photo_url=body.photoUrl,
     )
     db.add(obj); db.commit(); db.refresh(obj)
@@ -71,8 +82,9 @@ def update_internship(item_id: int, body: s.InternshipIn, db: Session = Depends(
     obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
+    start, end = _parse_period(body.period)
     obj.company = body.company; obj.dept = body.dept; obj.role = body.role
-    obj.start_date = _parse_date(body.startDate); obj.end_date = _parse_date(body.endDate)
+    obj.start_date = start; obj.end_date = end
     obj.contribution = body.contribution; obj.photo_url = body.photoUrl
     db.commit(); db.refresh(obj)
     return _intern_out(obj)

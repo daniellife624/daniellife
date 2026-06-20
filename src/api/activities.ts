@@ -4,6 +4,19 @@ import { apiFetch } from './client'
 export async function getExperiences(): Promise<Experience[]> {
   return apiFetch<Experience[]>('/api/activities/experiences')
 }
+export async function createExperience(body: Omit<Experience, 'id'>): Promise<Experience> {
+  return apiFetch<Experience>('/api/activities/experiences', {
+    method: 'POST', body: JSON.stringify(body),
+  })
+}
+export async function updateExperience(id: number, body: Omit<Experience, 'id'>): Promise<Experience> {
+  return apiFetch<Experience>(`/api/activities/experiences/${id}`, {
+    method: 'PUT', body: JSON.stringify(body),
+  })
+}
+export async function deleteExperience(id: number): Promise<void> {
+  await apiFetch(`/api/activities/experiences/${id}`, { method: 'DELETE' })
+}
 
 export async function getTravelEntries(): Promise<TravelEntry[]> {
   return apiFetch<TravelEntry[]>('/api/activities/travel')

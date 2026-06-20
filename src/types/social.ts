@@ -8,7 +8,7 @@ export interface SocialActivity {
   esgType: EsgType
   sdgNumbers: SdgNumber[]
   periodFrom: string
-  periodTo: string
+  periodTo?: string
   contribution: string
   reflection: string
   photoUrl?: string

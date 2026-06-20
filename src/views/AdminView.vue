@@ -57,7 +57,7 @@
         v-if="current === 'social'"
         title="社會參與"
         :columns="['名稱', 'ESG', '組織', '開始', '結束']"
-        :rows="socialActivities.map(a => [a.name, a.esgType, a.organization, a.periodFrom, a.periodTo])"
+        :rows="socialActivities.map(a => [a.name, a.esgType, a.organization, a.periodFrom, a.periodTo ?? ''])"
         :ids="socialActivities.map(a => a.id)"
         @add="openAdd"
         @edit="openEdit"
@@ -68,7 +68,7 @@
         v-if="current === 'literature'"
         title="文學作品"
         :columns="['標題', '撰寫年齡', '期間', '得獎紀錄']"
-        :rows="literatureWorks.map(w => [w.title, w.ageWritten + '歲', w.period, w.awards])"
+        :rows="literatureWorks.map(w => [w.title, w.ageWritten ? w.ageWritten + '歲' : '', w.period ?? '', w.awards])"
         :ids="literatureWorks.map(w => w.id)"
         @add="openAdd"
         @edit="openEdit"
@@ -121,13 +121,16 @@
                 v-model="formData[field.key]"
                 class="modal__input"
                 :type="field.type ?? 'text'"
-                :placeholder="field.label"
+                :placeholder="field.placeholder ?? field.label"
               />
             </label>
           </div>
+          <p v-if="saveError" class="modal__error">{{ saveError }}</p>
           <div class="modal__actions">
             <button class="modal__btn modal__btn--cancel" @click="modalOpen = false">取消</button>
-            <button class="modal__btn modal__btn--save" @click="saveModal">儲存</button>
+            <button class="modal__btn modal__btn--save" :disabled="saving" @click="saveModal">
+              {{ saving ? '儲存中…' : '儲存' }}
+            </button>
           </div>
         </div>
       </div>
@@ -141,12 +144,25 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AdminTable from '@/components/admin/AdminTable.vue'
-import { getInternships, getProjects } from '@/api/homepage'
-import { getExperiences } from '@/api/activities'
-import { getSocialActivities } from '@/api/social'
-import { getLiteratureWorks } from '@/api/literature'
-import { getThesisPapers } from '@/api/thesis'
-import { getHoldings } from '@/api/finance'
+import {
+  getInternships, createInternship, updateInternship, deleteInternship,
+  getProjects,    createProject,    updateProject,    deleteProject,
+} from '@/api/homepage'
+import {
+  getExperiences, createExperience, updateExperience, deleteExperience,
+} from '@/api/activities'
+import {
+  getSocialActivities, createSocialActivity, updateSocialActivity, deleteSocialActivity,
+} from '@/api/social'
+import {
+  getLiteratureWorks, createLiteratureWork, updateLiteratureWork, deleteLiteratureWork,
+} from '@/api/literature'
+import {
+  getThesisPapers, createThesisPaper, updateThesisPaper, deleteThesisPaper,
+} from '@/api/thesis'
+import {
+  getHoldings, createHolding, updateHolding, deleteHolding,
+} from '@/api/finance'
 import type { Internship, Project } from '@/types/homepage'
 import type { Experience } from '@/types/activities'
 import type { SocialActivity } from '@/types/social'
@@ -201,54 +217,67 @@ onMounted(async () => {
   ])
 })
 
-// ── Modal ──
+// ── Modal state ──
 const modalOpen = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
 const editId    = ref<number | null>(null)
 const formData  = ref<Record<string, string>>({})
+const saving    = ref(false)
+const saveError = ref('')
 
-type FieldDef = { key: string; label: string; type?: string }
+type FieldDef = { key: string; label: string; type?: string; placeholder?: string }
 
 const fieldMap: Record<SectionKey, FieldDef[]> = {
   internships: [
     { key: 'company',      label: '公司' },
     { key: 'dept',         label: '部門' },
     { key: 'role',         label: '職稱' },
-    { key: 'period',       label: '期間' },
+    { key: 'period',       label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
   ],
   projects: [
-    { key: 'name',    label: '名稱' },
-    { key: 'type',    label: '類型 (code / uiux / finance)' },
-    { key: 'tech',    label: '技術' },
-    { key: 'members', label: '成員人數', type: 'number' },
-    { key: 'period',  label: '期間' },
-    { key: 'core',    label: '核心功能', type: 'textarea' },
+    { key: 'name',       label: '名稱' },
+    { key: 'type',       label: '類型', placeholder: 'code / uiux / finance' },
+    { key: 'techLabel',  label: '技術標籤', placeholder: '使用技術 / 使用軟體' },
+    { key: 'tech',       label: '技術/工具' },
+    { key: 'members',    label: '成員人數', type: 'number' },
+    { key: 'period',     label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
+    { key: 'core',       label: '核心功能（20字）' },
+    { key: 'githubUrl',  label: 'GitHub 連結（可空）' },
+    { key: 'youtubeUrl', label: 'YouTube 連結（可空）' },
+    { key: 'createdAt',  label: '建立日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'starS',      label: 'STAR — S 情境', type: 'textarea' },
+    { key: 'starT',      label: 'STAR — T 任務', type: 'textarea' },
+    { key: 'starA',      label: 'STAR — A 行動', type: 'textarea' },
+    { key: 'starR',      label: 'STAR — R 結果', type: 'textarea' },
   ],
   activities: [
+    { key: 'type',         label: '類型', placeholder: 'leadership / club' },
     { key: 'title',        label: '標題' },
     { key: 'organization', label: '組織' },
-    { key: 'type',         label: '類型 (leadership / club)' },
-    { key: 'period',       label: '期間' },
+    { key: 'period',       label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
   ],
   social: [
     { key: 'name',         label: '名稱' },
-    { key: 'esgType',      label: 'ESG (Environmental / Social / Governance)' },
     { key: 'organization', label: '組織' },
-    { key: 'periodFrom',   label: '開始日期' },
-    { key: 'periodTo',     label: '結束日期' },
+    { key: 'esgType',      label: 'ESG 類型', placeholder: 'Environmental / Social / Governance' },
+    { key: 'sdgNumbers',   label: 'SDG 號碼（逗號分隔）', placeholder: '如 1,3,13' },
+    { key: 'periodFrom',   label: '開始日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'periodTo',     label: '結束日期（可空）', placeholder: 'YYYY-MM-DD' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
+    { key: 'reflection',   label: '心得', type: 'textarea' },
   ],
   literature: [
     { key: 'title',      label: '標題' },
     { key: 'ageWritten', label: '撰寫年齡', type: 'number' },
-    { key: 'period',     label: '撰寫期間' },
+    { key: 'period',     label: '撰寫期間', placeholder: 'YYYY.MM' },
     { key: 'awards',     label: '得獎紀錄' },
     { key: 'summary',    label: '摘要', type: 'textarea' },
+    { key: 'fullText',   label: '全文（可空）', type: 'textarea' },
   ],
   papers: [
-    { key: 'topic',        label: '主題' },
+    { key: 'topic',        label: '研究主題' },
     { key: 'name',         label: '論文名稱', type: 'textarea' },
     { key: 'journal',      label: '期刊' },
     { key: 'authors',      label: '作者' },
@@ -259,54 +288,243 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   holdings: [
     { key: 'symbol',      label: '股票代碼' },
     { key: 'name',        label: '名稱' },
-    { key: 'currency',    label: '幣別 (TWD / USD)' },
+    { key: 'currency',    label: '幣別', placeholder: 'TWD / USD' },
     { key: 'broker',      label: '券商' },
     { key: 'shares',      label: '股數', type: 'number' },
     { key: 'avgPrice',    label: '均價', type: 'number' },
     { key: 'marketPrice', label: '市價', type: 'number' },
+    { key: 'dividend',    label: '股利', type: 'number' },
   ],
 }
 
 const modalFields = computed<FieldDef[]>(() => fieldMap[current.value] ?? [])
 
+// ── openAdd ──
 function openAdd() {
   modalMode.value = 'add'
   editId.value = null
+  saveError.value = ''
   formData.value = Object.fromEntries(fieldMap[current.value].map((f) => [f.key, '']))
   modalOpen.value = true
 }
 
+// ── openEdit ──
 function openEdit(id: number) {
   modalMode.value = 'edit'
   editId.value = id
-  const dataMap: Record<SectionKey, { id: number }[]> = {
-    internships: interns.value,
-    projects:    projects.value,
-    activities:  experiences.value,
-    social:      socialActivities.value,
-    literature:  literatureWorks.value,
-    papers:      papers.value,
-    holdings:    holdings.value,
+  saveError.value = ''
+  const fd: Record<string, string> = {}
+
+  if (current.value === 'internships') {
+    const item = interns.value.find((i) => i.id === id)!
+    Object.assign(fd, {
+      company: item.company, dept: item.dept, role: item.role,
+      period: item.period, contribution: item.contribution,
+    })
+  } else if (current.value === 'projects') {
+    const item = projects.value.find((p) => p.id === id)!
+    Object.assign(fd, {
+      name: item.name, type: item.type,
+      techLabel: item.techLabel, tech: item.tech,
+      members: String(item.members), period: item.period, core: item.core,
+      githubUrl: item.githubUrl ?? '', youtubeUrl: item.youtubeUrl ?? '',
+      createdAt: item.createdAt,
+      starS: item.star.find((s) => s.label === 'S')?.text ?? '',
+      starT: item.star.find((s) => s.label === 'T')?.text ?? '',
+      starA: item.star.find((s) => s.label === 'A')?.text ?? '',
+      starR: item.star.find((s) => s.label === 'R')?.text ?? '',
+    })
+  } else if (current.value === 'activities') {
+    const item = experiences.value.find((e) => e.id === id)!
+    Object.assign(fd, {
+      type: item.type, title: item.title, organization: item.organization,
+      period: item.period, contribution: item.contribution,
+    })
+  } else if (current.value === 'social') {
+    const item = socialActivities.value.find((a) => a.id === id)!
+    Object.assign(fd, {
+      name: item.name, organization: item.organization, esgType: item.esgType,
+      sdgNumbers: item.sdgNumbers.join(', '),
+      periodFrom: item.periodFrom, periodTo: item.periodTo ?? '',
+      contribution: item.contribution, reflection: item.reflection,
+    })
+  } else if (current.value === 'literature') {
+    const item = literatureWorks.value.find((w) => w.id === id)!
+    Object.assign(fd, {
+      title: item.title, ageWritten: item.ageWritten ? String(item.ageWritten) : '',
+      period: item.period ?? '', awards: item.awards,
+      summary: item.summary, fullText: item.fullText ?? '',
+    })
+  } else if (current.value === 'papers') {
+    const item = papers.value.find((p) => p.id === id)!
+    Object.assign(fd, {
+      topic: item.topic, name: item.name, journal: item.journal,
+      authors: item.authors, year: String(item.year),
+      purpose: item.purpose, contribution: item.contribution,
+    })
+  } else if (current.value === 'holdings') {
+    const item = holdings.value.find((h) => h.id === id)!
+    Object.assign(fd, {
+      symbol: item.symbol, name: item.name, currency: item.currency,
+      broker: item.broker, shares: String(item.shares),
+      avgPrice: String(item.avgPrice), marketPrice: String(item.marketPrice),
+      dividend: String(item.dividend),
+    })
   }
-  const item = dataMap[current.value].find((x) => x.id === id) as Record<string, unknown> | undefined
-  if (item) {
-    formData.value = Object.fromEntries(
-      fieldMap[current.value].map((f) => [f.key, String(item[f.key] ?? '')])
-    )
-  }
+
+  formData.value = fd
   modalOpen.value = true
 }
 
-function saveModal() {
-  // TODO: call apiFetch PUT / POST with formData when backend is ready
-  console.log('[Admin] save', current.value, modalMode.value, formData.value)
-  modalOpen.value = false
+// ── saveModal ──
+async function saveModal() {
+  saving.value = true
+  saveError.value = ''
+  const fd = formData.value
+  const isEdit = modalMode.value === 'edit'
+
+  try {
+    if (current.value === 'internships') {
+      const body = {
+        company: fd.company, dept: fd.dept, role: fd.role,
+        period: fd.period, contribution: fd.contribution,
+        photoUrl: fd.photoUrl || undefined,
+      }
+      if (isEdit) {
+        const updated = await updateInternship(editId.value!, body)
+        replaceInList(interns.value, updated)
+      } else {
+        interns.value.push(await createInternship(body))
+      }
+
+    } else if (current.value === 'projects') {
+      const star = (['S', 'T', 'A', 'R'] as const)
+        .map((l) => ({ label: l, text: fd[`star${l}`] ?? '' }))
+        .filter((s) => s.text.trim())
+      const body = {
+        name: fd.name, type: fd.type,
+        techLabel: fd.techLabel || '使用技術', tech: fd.tech,
+        members: Number(fd.members) || 1, period: fd.period, core: fd.core,
+        githubUrl: fd.githubUrl || undefined, youtubeUrl: fd.youtubeUrl || undefined,
+        star, createdAt: fd.createdAt,
+      }
+      if (isEdit) {
+        const updated = await updateProject(editId.value!, body)
+        replaceInList(projects.value, updated)
+      } else {
+        projects.value.push(await createProject(body))
+      }
+
+    } else if (current.value === 'activities') {
+      const body = {
+        type: fd.type as 'leadership' | 'club',
+        title: fd.title, organization: fd.organization,
+        period: fd.period, contribution: fd.contribution,
+        photos: [],
+      }
+      if (isEdit) {
+        const updated = await updateExperience(editId.value!, body)
+        replaceInList(experiences.value, updated)
+      } else {
+        experiences.value.push(await createExperience(body))
+      }
+
+    } else if (current.value === 'social') {
+      const sdgNumbers = fd.sdgNumbers
+        .split(',').map((n) => parseInt(n.trim())).filter((n) => !isNaN(n) && n >= 1 && n <= 17)
+      const body = {
+        name: fd.name, organization: fd.organization,
+        esgType: fd.esgType as SocialActivity['esgType'],
+        sdgNumbers,
+        periodFrom: fd.periodFrom, periodTo: fd.periodTo || undefined,
+        contribution: fd.contribution, reflection: fd.reflection,
+      }
+      if (isEdit) {
+        const updated = await updateSocialActivity(editId.value!, body)
+        replaceInList(socialActivities.value, updated)
+      } else {
+        socialActivities.value.push(await createSocialActivity(body))
+      }
+
+    } else if (current.value === 'literature') {
+      const body = {
+        title: fd.title,
+        ageWritten: fd.ageWritten ? Number(fd.ageWritten) : undefined,
+        period: fd.period || undefined,
+        awards: fd.awards, summary: fd.summary,
+        fullText: fd.fullText || undefined,
+      }
+      if (isEdit) {
+        const updated = await updateLiteratureWork(editId.value!, body)
+        replaceInList(literatureWorks.value, updated)
+      } else {
+        literatureWorks.value.push(await createLiteratureWork(body))
+      }
+
+    } else if (current.value === 'papers') {
+      const body = {
+        topic: fd.topic, name: fd.name, journal: fd.journal,
+        authors: fd.authors, year: Number(fd.year) || new Date().getFullYear(),
+        purpose: fd.purpose, contribution: fd.contribution,
+      }
+      if (isEdit) {
+        const updated = await updateThesisPaper(editId.value!, body)
+        replaceInList(papers.value, updated)
+      } else {
+        papers.value.push(await createThesisPaper(body))
+      }
+
+    } else if (current.value === 'holdings') {
+      const body = {
+        symbol: fd.symbol, name: fd.name,
+        currency: fd.currency as Holding['currency'],
+        broker: fd.broker,
+        shares: Number(fd.shares), avgPrice: Number(fd.avgPrice),
+        marketPrice: Number(fd.marketPrice), dividend: Number(fd.dividend) || 0,
+      }
+      if (isEdit) {
+        const updated = await updateHolding(editId.value!, body)
+        replaceInList(holdings.value, updated)
+      } else {
+        holdings.value.push(await createHolding(body))
+      }
+    }
+
+    modalOpen.value = false
+  } catch {
+    saveError.value = '儲存失敗，請確認欄位格式是否正確'
+  } finally {
+    saving.value = false
+  }
 }
 
-function deleteItem(id: number) {
+function replaceInList<T extends { id: number }>(list: T[], updated: T) {
+  const idx = list.findIndex((x) => x.id === updated.id)
+  if (idx !== -1) list[idx] = updated
+}
+
+// ── deleteItem ──
+async function deleteItem(id: number) {
   if (!confirm('確定刪除這筆資料？')) return
-  // TODO: call apiFetch DELETE when backend is ready
-  console.log('[Admin] delete', current.value, id)
+  try {
+    if (current.value === 'internships') {
+      await deleteInternship(id); interns.value = interns.value.filter((i) => i.id !== id)
+    } else if (current.value === 'projects') {
+      await deleteProject(id); projects.value = projects.value.filter((p) => p.id !== id)
+    } else if (current.value === 'activities') {
+      await deleteExperience(id); experiences.value = experiences.value.filter((e) => e.id !== id)
+    } else if (current.value === 'social') {
+      await deleteSocialActivity(id); socialActivities.value = socialActivities.value.filter((a) => a.id !== id)
+    } else if (current.value === 'literature') {
+      await deleteLiteratureWork(id); literatureWorks.value = literatureWorks.value.filter((w) => w.id !== id)
+    } else if (current.value === 'papers') {
+      await deleteThesisPaper(id); papers.value = papers.value.filter((p) => p.id !== id)
+    } else if (current.value === 'holdings') {
+      await deleteHolding(id); holdings.value = holdings.value.filter((h) => h.id !== id)
+    }
+  } catch {
+    alert('刪除失敗，請再試一次')
+  }
 }
 
 function logout() {
@@ -407,9 +625,9 @@ function logout() {
   background: var(--color-white);
   border-radius: var(--radius-md);
   padding: var(--space-6);
-  width: 540px;
-  max-width: 90vw;
-  max-height: 85vh;
+  width: 560px;
+  max-width: 92vw;
+  max-height: 88vh;
   overflow-y: auto;
   position: relative;
   display: flex;
@@ -463,6 +681,15 @@ function logout() {
 .modal__textarea:focus { border-color: var(--color-primary); }
 .modal__textarea { resize: vertical; }
 
+.modal__error {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
 .modal__actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 
 .modal__btn {
@@ -475,7 +702,8 @@ function logout() {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-.modal__btn:hover { opacity: 0.82; }
+.modal__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.modal__btn:not(:disabled):hover { opacity: 0.82; }
 .modal__btn--cancel { background: var(--color-ink-4); color: var(--color-ink-1); }
 .modal__btn--save   { background: var(--color-primary); color: var(--color-ink-1); }
 </style>
