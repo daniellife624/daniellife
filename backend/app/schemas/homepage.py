@@ -1,86 +1,121 @@
-import json
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 
+# ── Internship ───────────────────────────────────────────────────
 class InternshipOut(BaseModel):
     id: int
     company: str
-    department: str
-    startDate: Optional[str] = None     # ISO "YYYY-MM-DD"
-    endDate: Optional[str] = None
-    period: str                         # "YYYY/MM – YYYY/MM" computed
+    dept: str
+    role: str
+    period: str
     contribution: str
-    photos: list[str] = []
+    photoUrl: Optional[str] = None
+
+    model_config = {"from_attributes": True}
 
 
 class InternshipIn(BaseModel):
     company: str
-    department: str
-    startDate: Optional[str] = None     # ISO "YYYY-MM-DD"
+    dept: str
+    role: str = "實習生"
+    startDate: Optional[str] = None
     endDate: Optional[str] = None
     contribution: str
-    photos: list[str] = []
+    photoUrl: Optional[str] = None
+
+
+# ── Project ──────────────────────────────────────────────────────
+class StarItemOut(BaseModel):
+    label: str
+    text: str
 
 
 class ProjectOut(BaseModel):
     id: int
-    title: str
+    name: str
     type: str
-    tech: list[str] = []
-    people: int
-    summary: str
-    links: list[str] = []
-
-    @field_validator("tech", "links", mode="before")
-    @classmethod
-    def parse_json(cls, v):
-        return json.loads(v) if isinstance(v, str) else v
-
-    model_config = {"from_attributes": True}
+    techLabel: str
+    tech: str
+    members: int
+    period: str
+    core: str
+    githubUrl: Optional[str] = None
+    youtubeUrl: Optional[str] = None
+    star: list[StarItemOut] = []
+    createdAt: str
 
 
 class ProjectIn(BaseModel):
-    title: str
+    name: str
     type: str
-    tech: list[str] = []
-    people: int = 1
-    summary: str
-    links: list[str] = []
+    techLabel: str = "使用技術"
+    tech: str = ""
+    members: int = 1
+    period: str = ""
+    core: str = ""
+    githubUrl: Optional[str] = None
+    youtubeUrl: Optional[str] = None
+    star: list[StarItemOut] = []
+    createdAt: str = ""
 
 
-class CertItemOut(BaseModel):
-    id: int
-    category: str
+# ── CertData ─────────────────────────────────────────────────────
+class LangCertOut(BaseModel):
     name: str
-    level: Optional[str] = None
-    progress: int
-
-    model_config = {"from_attributes": True}
+    score: str
+    pct: float
 
 
-class CertItemIn(BaseModel):
+class CertGroupOut(BaseModel):
     category: str
-    name: str
-    level: Optional[str] = None
-    progress: int = 0
+    items: list[str] = []
 
 
+class LanguageData(BaseModel):
+    en: list[LangCertOut]
+    jp: list[LangCertOut]
+
+
+class CertDataOut(BaseModel):
+    language: LanguageData
+    finance: list[CertGroupOut]
+    it: list[CertGroupOut]
+
+
+# ── AcademicMilestone ────────────────────────────────────────────
 class AcademicMilestoneOut(BaseModel):
     id: int
-    label: str
-    sublabel: str
-    year: str
-    x: float
-    y: float
+    school: str
+    major: str
+    period: str
+    gpa: str
+    rank: str
+    facts: list[str] = []
 
-    model_config = {"from_attributes": True}
+
+class AcademicMilestoneIn(BaseModel):
+    school: str
+    major: str
+    period: str
+    gpa: str = ""
+    rank: str = ""
+    facts: list[str] = []
+    sort_order: int = 0
 
 
+# ── FuturePlan ───────────────────────────────────────────────────
 class FuturePlanOut(BaseModel):
     id: int
-    horizon: str
-    content: str
-    order: int
+    phase: str
+    title: str
+    subtitle: str
+    items: list[str] = []
 
-    model_config = {"from_attributes": True}
+
+class FuturePlanIn(BaseModel):
+    phase: str
+    title: str
+    subtitle: str
+    items: list[str] = []
+    sort_order: int = 0

@@ -26,37 +26,44 @@ def _parse_date(st: str | None) -> date | None:
 def _fmt_period(start: date | None, end: date | None) -> str:
     if start is None:
         return ""
-    s = start.strftime("%Y/%m")
-    return f"{s} – {end.strftime('%Y/%m')}" if end else f"{s} – 至今"
+    fmt = start.strftime("%Y/%m")
+    return f"{fmt} – {end.strftime('%Y/%m')}" if end else f"{fmt} – 至今"
 
 
-def _intern_to_out(r) -> s.InternshipOut:
+def _intern_out(r: m.Internship) -> s.InternshipOut:
     return s.InternshipOut(
-        id=r.id, company=r.company, department=r.department,
-        startDate=r.start_date.isoformat() if r.start_date else None,
-        endDate=r.end_date.isoformat() if r.end_date else None,
+        id=r.id, company=r.company, dept=r.dept, role=r.role,
         period=_fmt_period(r.start_date, r.end_date),
-        contribution=r.contribution,
-        photos=json.loads(r.photos) if r.photos else [],
+        contribution=r.contribution, photoUrl=r.photo_url,
+    )
+
+
+def _project_out(r: m.Project) -> s.ProjectOut:
+    return s.ProjectOut(
+        id=r.id, name=r.name, type=r.type,
+        techLabel=r.tech_label, tech=r.tech,
+        members=r.members, period=r.period, core=r.core,
+        githubUrl=r.github_url, youtubeUrl=r.youtube_url,
+        star=json.loads(r.star) if r.star else [],
+        createdAt=r.created_at,
     )
 
 
 # ── Internships ──────────────────────────────────────────────────
 @router.get("/internships", response_model=list[s.InternshipOut])
 def list_internships(db: Session = Depends(get_db)):
-    return [_intern_to_out(r) for r in db.query(m.Internship).all()]
+    return [_intern_out(r) for r in db.query(m.Internship).all()]
 
 
 @router.post("/internships", response_model=s.InternshipOut)
 def create_internship(body: s.InternshipIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = m.Internship(
-        company=body.company, department=body.department,
-        start_date=_parse_date(body.startDate),
-        end_date=_parse_date(body.endDate),
-        contribution=body.contribution, photos=json.dumps(body.photos),
+        company=body.company, dept=body.dept, role=body.role,
+        start_date=_parse_date(body.startDate), end_date=_parse_date(body.endDate),
+        contribution=body.contribution, photo_url=body.photoUrl,
     )
     db.add(obj); db.commit(); db.refresh(obj)
-    return _intern_to_out(obj)
+    return _intern_out(obj)
 
 
 @router.put("/internships/{item_id}", response_model=s.InternshipOut)
@@ -64,11 +71,11 @@ def update_internship(item_id: int, body: s.InternshipIn, db: Session = Depends(
     obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    obj.company = body.company; obj.department = body.department
+    obj.company = body.company; obj.dept = body.dept; obj.role = body.role
     obj.start_date = _parse_date(body.startDate); obj.end_date = _parse_date(body.endDate)
-    obj.contribution = body.contribution; obj.photos = json.dumps(body.photos)
+    obj.contribution = body.contribution; obj.photo_url = body.photoUrl
     db.commit(); db.refresh(obj)
-    return _intern_to_out(obj)
+    return _intern_out(obj)
 
 
 @router.delete("/internships/{item_id}", status_code=204)
@@ -82,14 +89,20 @@ def delete_internship(item_id: int, db: Session = Depends(get_db), _=Depends(get
 # ── Projects ─────────────────────────────────────────────────────
 @router.get("/projects", response_model=list[s.ProjectOut])
 def list_projects(db: Session = Depends(get_db)):
-    return db.query(m.Project).all()
+    return [_project_out(r) for r in db.query(m.Project).order_by(m.Project.created_at.desc()).all()]
 
 
 @router.post("/projects", response_model=s.ProjectOut)
 def create_project(body: s.ProjectIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    obj = m.Project(**body.model_dump() | {"tech": json.dumps(body.tech), "links": json.dumps(body.links)})
+    obj = m.Project(
+        name=body.name, type=body.type, tech_label=body.techLabel,
+        tech=body.tech, members=body.members, period=body.period,
+        core=body.core, github_url=body.githubUrl, youtube_url=body.youtubeUrl,
+        star=json.dumps([item.model_dump() for item in body.star], ensure_ascii=False),
+        created_at=body.createdAt,
+    )
     db.add(obj); db.commit(); db.refresh(obj)
-    return obj
+    return _project_out(obj)
 
 
 @router.put("/projects/{item_id}", response_model=s.ProjectOut)
@@ -97,10 +110,13 @@ def update_project(item_id: int, body: s.ProjectIn, db: Session = Depends(get_db
     obj = db.query(m.Project).filter(m.Project.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in body.model_dump().items():
-        setattr(obj, k, json.dumps(v) if k in ("tech", "links") else v)
+    obj.name = body.name; obj.type = body.type; obj.tech_label = body.techLabel
+    obj.tech = body.tech; obj.members = body.members; obj.period = body.period
+    obj.core = body.core; obj.github_url = body.githubUrl; obj.youtube_url = body.youtubeUrl
+    obj.star = json.dumps([item.model_dump() for item in body.star], ensure_ascii=False)
+    obj.created_at = body.createdAt
     db.commit(); db.refresh(obj)
-    return obj
+    return _project_out(obj)
 
 
 @router.delete("/projects/{item_id}", status_code=204)
@@ -111,17 +127,101 @@ def delete_project(item_id: int, db: Session = Depends(get_db), _=Depends(get_cu
     db.delete(obj); db.commit()
 
 
-# ── Certs / Academic / FuturePlan (read-only public) ─────────────
-@router.get("/certs", response_model=list[s.CertItemOut])
-def list_certs(db: Session = Depends(get_db)):
-    return db.query(m.CertItem).all()
+# ── Certs ─────────────────────────────────────────────────────────
+@router.get("/certs", response_model=s.CertDataOut)
+def get_certs(db: Session = Depends(get_db)):
+    lang_en = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
+               for r in db.query(m.LanguageCert).filter(m.LanguageCert.lang == "en").all()]
+    lang_jp = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
+               for r in db.query(m.LanguageCert).filter(m.LanguageCert.lang == "jp").all()]
+    finance = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
+               for r in db.query(m.CertGroup).filter(m.CertGroup.domain == "finance").order_by(m.CertGroup.sort_order).all()]
+    it = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
+          for r in db.query(m.CertGroup).filter(m.CertGroup.domain == "it").order_by(m.CertGroup.sort_order).all()]
+    return s.CertDataOut(language=s.LanguageData(en=lang_en, jp=lang_jp), finance=finance, it=it)
 
 
+# ── Academic ─────────────────────────────────────────────────────
 @router.get("/academic", response_model=list[s.AcademicMilestoneOut])
 def list_academic(db: Session = Depends(get_db)):
-    return db.query(m.AcademicMilestone).order_by(m.AcademicMilestone.x).all()
+    rows = db.query(m.AcademicMilestone).order_by(m.AcademicMilestone.sort_order).all()
+    return [s.AcademicMilestoneOut(
+        id=r.id, school=r.school, major=r.major, period=r.period,
+        gpa=r.gpa, rank=r.rank, facts=json.loads(r.facts) if r.facts else [],
+    ) for r in rows]
 
 
+@router.post("/academic", response_model=s.AcademicMilestoneOut)
+def create_academic(body: s.AcademicMilestoneIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = m.AcademicMilestone(
+        school=body.school, major=body.major, period=body.period,
+        gpa=body.gpa, rank=body.rank,
+        facts=json.dumps(body.facts, ensure_ascii=False), sort_order=body.sort_order,
+    )
+    db.add(obj); db.commit(); db.refresh(obj)
+    return s.AcademicMilestoneOut(
+        id=obj.id, school=obj.school, major=obj.major, period=obj.period,
+        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts),
+    )
+
+
+@router.put("/academic/{item_id}", response_model=s.AcademicMilestoneOut)
+def update_academic(item_id: int, body: s.AcademicMilestoneIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.AcademicMilestone).filter(m.AcademicMilestone.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.school = body.school; obj.major = body.major; obj.period = body.period
+    obj.gpa = body.gpa; obj.rank = body.rank
+    obj.facts = json.dumps(body.facts, ensure_ascii=False); obj.sort_order = body.sort_order
+    db.commit(); db.refresh(obj)
+    return s.AcademicMilestoneOut(
+        id=obj.id, school=obj.school, major=obj.major, period=obj.period,
+        gpa=obj.gpa, rank=obj.rank, facts=json.loads(obj.facts),
+    )
+
+
+@router.delete("/academic/{item_id}", status_code=204)
+def delete_academic(item_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.AcademicMilestone).filter(m.AcademicMilestone.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    db.delete(obj); db.commit()
+
+
+# ── FuturePlan ───────────────────────────────────────────────────
 @router.get("/future-plans", response_model=list[s.FuturePlanOut])
 def list_future_plans(db: Session = Depends(get_db)):
-    return db.query(m.FuturePlan).order_by(m.FuturePlan.order).all()
+    rows = db.query(m.FuturePlan).order_by(m.FuturePlan.sort_order).all()
+    return [s.FuturePlanOut(
+        id=r.id, phase=r.phase, title=r.title, subtitle=r.subtitle,
+        items=json.loads(r.items) if r.items else [],
+    ) for r in rows]
+
+
+@router.post("/future-plans", response_model=s.FuturePlanOut)
+def create_future_plan(body: s.FuturePlanIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = m.FuturePlan(
+        phase=body.phase, title=body.title, subtitle=body.subtitle,
+        items=json.dumps(body.items, ensure_ascii=False), sort_order=body.sort_order,
+    )
+    db.add(obj); db.commit(); db.refresh(obj)
+    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items))
+
+
+@router.put("/future-plans/{item_id}", response_model=s.FuturePlanOut)
+def update_future_plan(item_id: int, body: s.FuturePlanIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.FuturePlan).filter(m.FuturePlan.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.phase = body.phase; obj.title = body.title; obj.subtitle = body.subtitle
+    obj.items = json.dumps(body.items, ensure_ascii=False); obj.sort_order = body.sort_order
+    db.commit(); db.refresh(obj)
+    return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items))
+
+
+@router.delete("/future-plans/{item_id}", status_code=204)
+def delete_future_plan(item_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    obj = db.query(m.FuturePlan).filter(m.FuturePlan.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    db.delete(obj); db.commit()
