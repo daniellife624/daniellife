@@ -144,7 +144,6 @@ const visibleNavItems = computed(() =>
   opacity: 0.7;
 }
 
-/* Hamburger */
 .navbar__hamburger {
   display: none;
   flex-direction: column;
@@ -160,7 +159,6 @@ const visibleNavItems = computed(() =>
   transition: all 0.3s;
 }
 
-/* Mobile Menu */
 .navbar__mobile {
   background-color: var(--color-primary);
   padding: var(--space-4) var(--space-6);
@@ -175,19 +173,9 @@ const visibleNavItems = computed(() =>
   color: var(--color-white);
 }
 
-/* RWD */
 @media (max-width: 767px) {
-  .navbar__nav {
-    display: none;
-  }
-
-  .navbar__hamburger {
-    display: flex;
-  }
-
-  .navbar {
-    height: auto;
-    min-height: var(--navbar-height);
-  }
+  .navbar__nav { display: none; }
+  .navbar__hamburger { display: flex; }
+  .navbar { height: auto; min-height: var(--navbar-height); }
 }
 </style>

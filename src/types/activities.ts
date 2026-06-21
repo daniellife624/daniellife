@@ -20,6 +20,7 @@ export interface TravelEntry {
   companions?: string
   activities?: string
   purchases?: string
+  photos?: string[]
 }
 
 export interface Continent {

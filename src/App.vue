@@ -19,8 +19,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import AppNavbar from '@/components/common/AppNavbar.vue'
-import AppFooter from '@/components/common/AppFooter.vue'
+import AppNavbar from '@/components/layout/AppNavbar.vue'
+import AppFooter from '@/components/layout/AppFooter.vue'
 
 const showTop = ref(false)
 

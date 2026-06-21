@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class ThesisNoteOut(BaseModel):
@@ -19,6 +19,13 @@ class ThesisNoteOut(BaseModel):
 
 class ThesisNoteIn(BaseModel):
     content: str
+
+    @field_validator('content')
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('「筆記內容」不可空白')
+        return v
 
 
 class ThesisIdeaOut(BaseModel):
@@ -43,9 +50,30 @@ class ThesisIdeaIn(BaseModel):
     content: str
     status: str = "pending"
 
+    @field_validator('content')
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('「內容」不可空白')
+        return v
+
+    @field_validator('status')
+    @classmethod
+    def status_choices(cls, v: str) -> str:
+        if v not in ('pending', 'approved', 'rejected'):
+            raise ValueError('「狀態」須為 pending / approved / rejected')
+        return v
+
 
 class ThesisIdeaUpdate(BaseModel):
     status: str
+
+    @field_validator('status')
+    @classmethod
+    def status_choices(cls, v: str) -> str:
+        if v not in ('pending', 'approved', 'rejected'):
+            raise ValueError('「狀態」須為 pending / approved / rejected')
+        return v
 
 
 class ThesisPaperOut(BaseModel):
@@ -69,3 +97,17 @@ class ThesisPaperIn(BaseModel):
     year: int
     purpose: str
     contribution: str
+
+    @field_validator('name', 'journal', 'authors', 'purpose', 'contribution')
+    @classmethod
+    def not_empty(cls, v: str, info) -> str:
+        if not v.strip():
+            raise ValueError(f'「{info.field_name}」不可空白')
+        return v
+
+    @field_validator('year')
+    @classmethod
+    def year_valid(cls, v: int) -> int:
+        if not (1900 <= v <= 2100):
+            raise ValueError('「年份」須為合理的西元年（1900–2100）')
+        return v

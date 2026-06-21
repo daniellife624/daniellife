@@ -1,4 +1,6 @@
-import { apiFetch } from './client'
+import { apiFetch, getToken } from './client'
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import type {
   Internship, Project, CertData, AcademicMilestone, FuturePlan,
   LangCertAdmin, CertGroupAdmin,
@@ -16,6 +18,21 @@ export async function updateInternship(id: number, body: Omit<Internship, 'id'>)
 }
 export async function deleteInternship(id: number): Promise<void> {
   await apiFetch(`/api/homepage/internships/${id}`, { method: 'DELETE' })
+}
+export async function uploadInternshipPhoto(id: number, file: File): Promise<Internship> {
+  const form = new FormData()
+  form.append('file', file)
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}/api/homepage/internships/${id}/photo`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
+}
+export async function deleteInternshipPhoto(id: number): Promise<Internship> {
+  return apiFetch<Internship>(`/api/homepage/internships/${id}/photo`, { method: 'DELETE' })
 }
 
 // ── Projects ─────────────────────────────────────────────────────

@@ -1,13 +1,13 @@
 # Daniellife 個人網站 — 專案全覽
 
-> 最後更新：2026-06-19（本 session 同步）
+> 最後更新：2026-06-21（論文 seed 匯入 + Kanban 拖曳修正 + PapersTable 介面清理）
 
 ---
 
 ## 一、專案簡介
 
 「Daniellife 會計丹尼」是周彥廷（NTU 會計碩士）的個人作品集兼履歷網站。
-公開頁面面向求職、展示活動與作品；管理員頁面供本人管理論文筆記、財務規劃等私人資料。
+公開頁面面向求職、展示活動與作品；管理員頁面供本人管理所有資料。
 
 ---
 
@@ -23,17 +23,16 @@
 | 地圖 | Leaflet + topojson-client（世界地圖 + 訪國高亮） |
 | 後端 | FastAPI 0.111 + SQLAlchemy 2.0 + PyMySQL |
 | 資料庫 | MySQL（XAMPP MariaDB 相容）|
-| 認證 | JWT（python-jose + passlib bcrypt） |
+| 認證 | **Google OAuth (GSI)** → 後端驗證 → JWT（python-jose） |
+| 檔案上傳 | python-multipart；圖片存 `backend/uploads/{section}/`；`/uploads` StaticFiles 掛載 |
 | AI 整合（待串接） | GitHub Models（GPT-4o）|
 
 ### npm 套件（非標準 Vite 預設）
 
-| 套件 | 版本 | 用途 |
-|------|------|------|
-| `leaflet` | latest | ActivitiesView 世界地圖 |
-| `@types/leaflet` | latest | TypeScript 型別 |
-| `topojson-client` | latest | TopoJSON → GeoJSON 轉換 |
-| `@types/topojson-client` | latest | TypeScript 型別 |
+| 套件 | 用途 |
+|------|------|
+| `leaflet` + `@types/leaflet` | ActivitiesView 世界地圖 |
+| `topojson-client` + `@types/topojson-client` | TopoJSON → GeoJSON 轉換 |
 
 ---
 
@@ -81,798 +80,540 @@
 
 ```
 src/
-├── assets/
-│   └── styles/
-│       └── tokens.css              # Design Tokens（全域 CSS 變數）
-│
-├── api/                            # Mock API 層（TODO: 替換為 apiFetch）
-│   ├── client.ts                   # apiFetch<T> 通用 fetch 包裝
-│   ├── auth.ts                     # mockLogin()（讀取 .env.local 驗證）
-│   ├── homepage.ts                 # 首頁 5 支 API
-│   ├── activities.ts               # 活動 / 旅遊 API
-│   ├── social.ts                   # 社會參與 API
-│   ├── literature.ts               # 文學天地 API
-│   ├── market.ts                   # 市場消息 API（新聞分頁）
-│   ├── finance.ts                  # 理財規劃 API
-│   └── thesis.ts                   # 論文統整 API（CRUD）
-│
-├── types/                          # TypeScript 介面定義
-│   ├── homepage.ts
-│   ├── activities.ts
-│   ├── social.ts
-│   ├── literature.ts
-│   ├── market.ts
-│   ├── finance.ts
-│   └── thesis.ts
-│
-├── stores/
-│   └── auth.ts                     # Pinia：isLoggedIn / user / login() / logout()
-│
-├── router/
-│   └── index.ts                    # 路由表 + beforeEach 權限守衛
-│
+├── assets/styles/tokens.css
+├── api/
+│   ├── client.ts          # apiFetch<T>、getToken()、mediaUrl(path)
+│   ├── homepage.ts        # internships / projects / certs / academic / futureplans / lang-certs / cert-groups
+│   ├── activities.ts      # experiences / travelEntries + photo upload/delete
+│   ├── social.ts          # socialActivities + photo upload/delete
+│   ├── literature.ts      # literatureWorks
+│   ├── finance.ts         # holdings
+│   └── thesis.ts          # thesisPapers
+├── types/                 # homepage / activities / social / literature / finance / thesis
+├── stores/auth.ts         # isLoggedIn / user / login() / logout()
+├── router/index.ts        # 路由表 + beforeEach 守衛
 ├── components/
-│   ├── common/
-│   │   ├── AppNavbar.vue           # 固定頂部導覽列（Logo 圓形）
-│   │   └── AppFooter.vue           # 頁尾（精簡 padding）
+│   ├── layout/            # AppNavbar（RWD + Google OAuth 感知）/ AppFooter
 │   ├── admin/
-│   │   └── AdminTable.vue          # 通用 CRUD 表格元件（props: title/columns/rows/ids）
+│   │   ├── AdminTable.vue   # 通用 CRUD 表格
+│   │   ├── AdminSidebar.vue # 深色左側欄 + 登出
+│   │   └── AdminModal.vue   # 新增/編輯 Modal + 照片管理
+│   ├── homepage/
+│   │   ├── HeroCard.vue          # 3 欄英雄卡（個人簡介 + 照片 + 格言）
+│   │   ├── InternSection.vue     # 實習卡片 slider + Modal
+│   │   ├── ProjectSection.vue    # 作品集（3 篩選 + 2×2 Grid）
+│   │   ├── CertSection.vue       # 證照 3 欄 + 語言進度條動畫
+│   │   ├── AcademicSection.vue   # 求學 SVG 曲線 + 汽車動畫
+│   │   └── FuturePlanSection.vue # 未來規劃金字塔（3 phase）
+│   ├── activities/
+│   │   ├── ExperienceCard.vue    # 領導/社團卡片（照片 grid + 貢獻截斷）
+│   │   ├── ExperienceModal.vue   # 課外活動詳情 Teleport Modal
+│   │   ├── TravelEntryModal.vue  # 旅遊記錄詳情 Teleport Modal
+│   │   └── AddTravelModal.vue    # 新增旅行日記（4 張照片上傳）
+│   ├── social/
+│   │   ├── ActivityCard.vue      # 社會參與卡片（ESG badge + 照片）
+│   │   ├── ActivityModal.vue     # 社會參與詳情 Teleport Modal
+│   │   └── FilterSidebar.vue     # ESG / SDGs checkbox 篩選 sidebar
+│   ├── literature/
+│   │   ├── TrainTimeline.vue     # 台鐵時間軸動畫（IntersectionObserver + RAF）
+│   │   └── WorkCard.vue          # 台鐵時刻板風格文學作品卡
+│   ├── thesis/
+│   │   ├── ThesisNotePanel.vue   # 碩論筆記（collapsible + 編輯模式）
+│   │   ├── KanbanBoard.vue       # 靈感 Kanban（3 欄 + HTML5 drag-drop + 新增 Modal）
+│   │   └── PapersTable.vue       # 參考文獻表（topic/journal 篩選 + keyword 搜尋）
+│   ├── news/
+│   │   ├── NewsCard.vue          # 新聞卡片（標題 + 摘要 + source badge，<a> 連結）
+│   │   ├── NewsList.vue          # 新聞列表（搜尋 + 地區 Tab + 分頁，自取資料）
+│   │   └── ChatPanel.vue         # AI 聊天室 UI（待串接 GitHub Models GPT-4o）
 │   ├── market/
-│   │   └── MarketOverviewPanel.vue # 大盤行情元件（TW/ASIA/EU/US Tab + OHLC + SVG 折線）
-│   └── homepage/
-│       ├── HeroCard.vue            # 個人卡片 3 欄（左資訊 / 中照片圈 / 右格言）
-│       ├── InternSection.vue       # 實習橫向 slider + Teleport 詳情 Modal
-│       ├── ProjectSection.vue      # 作品集 2×2 Grid + 3 Filter
-│       ├── CertSection.vue         # 專業證照 3 欄 + 進度條動畫
-│       ├── AcademicSection.vue     # 學業歷程 SVG 曲線 + 車子動畫
-│       └── FuturePlanSection.vue   # 近 5 年規劃金字塔
-│
+│   │   ├── MarketOverviewPanel.vue  # 大盤總覽（TW/US，fallback mock SVG）
+│   │   ├── ForexSection.vue         # TradingView 外匯小工具（USD/JPY/EUR → TWD）
+│   │   ├── YieldSection.vue         # FRED iframes（DGS10 + FEDFUNDS）
+│   │   └── WorldBankSection.vue     # World Bank API（GDP/CPI，🇺🇸/🇹🇼 切換）
+│   └── finance/
+│       ├── MetricCards.vue       # 5 個彩色頂部邊框指標卡
+│       ├── DonutChart.vue        # 可複用 SVG 甜甜圈圖（接 slices prop + CSS var 顏色）
+│       └── HoldingsTable.vue     # 11 欄持股明細表（紅綠損益 + 幣別 badge）
 ├── views/
-│   ├── HomeView.vue                # 首頁（組裝 6 個 Homepage 元件）
-│   ├── ActivitiesView.vue          # 課外活動（領導 + 社團 + Leaflet 地圖 + 3 個 Teleport Modal）
-│   ├── SocialView.vue              # 社會參與（ESG / SDGs 篩選）
-│   ├── LiteratureView.vue          # 文學天地（台鐵風格白底 火車時間軸 + 作品）
-│   ├── MarketView.vue              # 市場資訊（大盤 + Forex + FRED + World Bank）
-│   ├── NewsView.vue                # 總經新聞（新聞分頁 + AI 聊天室）
-│   ├── FinanceView.vue             # 理財規劃（指標卡 + SVG 甜甜圈 + 持股表）★ 需登入
-│   ├── ThesisView.vue              # 論文統整（筆記 + Kanban + 文獻表）★ 需登入
-│   ├── AdminView.vue               # 功能管理（深色側欄 + AdminTable CRUD）★ 需登入
-│   ├── LoginView.vue               # 登入（/danieladmin，讀取 .env.local 驗證）
-│   └── ForbiddenView.vue           # 403 未授權頁面
-│
-├── App.vue                         # AppNavbar + RouterView + AppFooter + 全站回到頂端按鈕
-└── index.html                      # Favicon：SVG inline，圓形黃底 D（垂直水平置中）
+│   ├── HomeView.vue
+│   ├── ActivitiesView.vue
+│   ├── SocialView.vue
+│   ├── LiteratureView.vue
+│   ├── MarketView.vue
+│   ├── NewsView.vue
+│   ├── FinanceView.vue    # ★ 需登入
+│   ├── ThesisView.vue     # ★ 需登入
+│   ├── AdminView.vue      # ★ 需登入（ADMIN_EMAIL 限定）
+│   ├── LoginView.vue      # /danieladmin（Google OAuth 入口）
+│   └── ForbiddenView.vue
+└── App.vue                # Navbar + RouterView + Footer + 回到頂端按鈕
+
+backend/
+├── app/
+│   ├── main.py            # FastAPI app、CORS、/uploads StaticFiles、lifespan
+│   ├── deps.py            # get_current_user：解 JWT → 比對 ADMIN_EMAIL（不查 DB）
+│   ├── database.py        # SQLAlchemy engine / SessionLocal
+│   ├── models/            # SQLAlchemy ORM 模型（15 張表）
+│   ├── schemas/           # Pydantic v2 schemas（含 @field_validator）
+│   ├── routers/
+│   │   ├── auth.py        # POST /auth/google（Google ID token → JWT）
+│   │   ├── homepage.py    # /api/homepage（internships 含照片、projects、certs、academic、futureplans）
+│   │   ├── activities.py  # /api/activities（experiences 含照片、travel 含照片）
+│   │   ├── social.py      # /api/social（含照片）
+│   │   ├── literature.py  # /api/literature
+│   │   ├── thesis.py      # /api/thesis
+│   │   └── finance.py     # /api/finance
+│   └── utils/
+│       └── auth.py        # create_token / decode_token
+├── seed.py                # 初始 mock 資料（experiences / travel / holdings / thesis_note / social / literature）
+├── seed_papers.py         # 21 篇 AIS DA Seminar 論文一次性匯入（從 Notion 手工整理）
+└── uploads/               # 上傳圖片（已加入 .gitignore）
 ```
 
 ---
 
 ## 五、路由表
 
-| 路徑 | Name | View | 備註 |
-|------|------|------|------|
-| `/` | home | HomeView | 公開 |
-| `/activities` | activities | ActivitiesView | 公開 |
-| `/social` | social | SocialView | 公開 |
-| `/literature` | literature | LiteratureView | 公開 |
-| `/market` | market | MarketView | 公開 |
-| `/news` | news | NewsView | 公開 |
-| `/finance` | finance | FinanceView | **需登入** |
-| `/thesis` | thesis | ThesisView | **需登入** |
-| `/admin` | admin | AdminView | **需登入** |
-| `/danieladmin` | login | LoginView | 隱藏登入入口 |
-| `/403` | forbidden | ForbiddenView | 未授權導向 |
-| `/:pathMatch(.*)` | not-found | — | redirect → `/` |
+| 路徑 | View | 備註 |
+|------|------|------|
+| `/` | HomeView | 公開 |
+| `/activities` | ActivitiesView | 公開 |
+| `/social` | SocialView | 公開 |
+| `/literature` | LiteratureView | 公開 |
+| `/market` | MarketView | 公開 |
+| `/news` | NewsView | 公開 |
+| `/finance` | FinanceView | **需登入** |
+| `/thesis` | ThesisView | **需登入** |
+| `/admin` | AdminView | **需登入（ADMIN_EMAIL 限定）** |
+| `/danieladmin` | LoginView | 隱藏 Google OAuth 入口 |
+| `/403` | ForbiddenView | 未授權導向 |
 
-> Navigation Guard：`router.beforeEach` 偵測 `meta.requiresAuth`，未登入導向 `/403`。
+> Navigation Guard：`beforeEach` 偵測 `meta.requiresAuth`，未登入導向 `/403`。
 
 ---
 
-## 六、Mock API 架構
+## 六、認證機制
 
-### `src/api/client.ts`
+### Google OAuth 流程
 
-```ts
-export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T>
-// 讀取 VITE_API_URL 環境變數；後端上線後取消 Mock 直接用此函式
+1. `/danieladmin` — Google One-Tap Sign-In（GSI）彈出選帳號
+2. 前端取得 Google `credential`（ID token）
+3. `GET /auth/google?token={credential}` → 後端驗證 Google 公鑰
+4. 後端核對 email == `ADMIN_EMAIL`（env 設定），不符合 → 403
+5. 後端回傳自簽 JWT → 前端存 `localStorage.auth_token`
+6. 往後所有 admin API：`Authorization: Bearer {token}`
+
+### `deps.py` — `get_current_user`
+
+```python
+def get_current_user(credentials) -> str:
+    email = decode_token(credentials.credentials)
+    if not email:
+        raise HTTPException(401)
+    if email != settings.ADMIN_EMAIL:
+        raise HTTPException(403)
+    return email
+# 不查 DB（Google OAuth 不建立 users 記錄）
 ```
 
-### `src/api/auth.ts`
+---
+
+## 七、API 模組說明
+
+### 前端 `src/api/client.ts`
 
 ```ts
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? 'admin@daniellife.com'
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? 'changeme'
-export async function mockLogin(email, password): Promise<{ ok: boolean; name: string; email: string }>
-// TODO: 後端上線後改為 POST /api/auth/login → { token }
+// apiFetch：自動加 Authorization header、解析 422 Pydantic errors 為可讀字串
+export async function apiFetch<T>(path, options?): Promise<T>
+export function getToken(): string | null
+export function mediaUrl(path: string): string  // 加 VITE_API_URL 前綴
 ```
 
-### 各 API 模組
+422 錯誤解析：`detail` 若為 array → 取每個 `e.msg`，去掉 "Value error, " 前綴，用「；」合併。
 
-每支 API 函式都有 `// TODO: return apiFetch(...)` 佔位，後端接好後直接替換一行。
+### 前端 `src/api/*.ts`
 
-| 模組 | 匯出函式 |
+| 模組 | 主要函式 |
 |------|---------|
-| `api/homepage.ts` | `getInternships()` · `getProjects()` · `getCertData()` · `getAcademicMilestones()` · `getFuturePlans()` |
-| `api/activities.ts` | `getExperiences()` · `getTravelEntries()` · `groupByContinent(entries)` |
-| `api/social.ts` | `getSocialActivities()` |
-| `api/literature.ts` | `getTimelineEvents()` · `getLiteratureWorks()` |
-| `api/market.ts` | `getNews(region, page, keyword)` → `{ items, total }` (5 筆/頁) |
-| `api/finance.ts` | `getHoldings()` · `getPortfolioSummary()` |
-| `api/thesis.ts` | `getThesisNote()` · `saveThesisNote(content)` · `getThesisIdeas()` · `addThesisIdea(idea)` · `updateIdeaStatus(id, status)` · `deleteThesisIdea(id)` · `getThesisPapers(topic, journal, keyword)` |
+| `homepage.ts` | `getInternships/createInternship/updateInternship/deleteInternship` + **uploadInternshipPhoto/deleteInternshipPhoto** + projects / cert-groups / lang-certs / academic / future-plans（各 CRUD）|
+| `activities.ts` | experiences / travelEntries 各 CRUD + **uploadExperiencePhoto/deleteExperiencePhoto/uploadTravelPhoto/deleteTravelPhoto** |
+| `social.ts` | socialActivities CRUD + **uploadSocialPhoto/deleteSocialPhoto** |
+| `literature.ts` | literatureWorks CRUD |
+| `finance.ts` | holdings CRUD |
+| `thesis.ts` | thesisPapers CRUD |
 
----
-
-## 七、TypeScript 介面總表
-
-### `types/activities.ts`
-
-```ts
-ExperienceType  'leadership' | 'club'
-Experience      { id, type, title, organization, period, contribution, photos }
-TravelEntry     { id, country, city, continent, visitedAt,
-                  journal?, companions?, activities?, purchases? }
-Continent       { key, label, entries: TravelEntry[] }
-```
-
-（其餘型別見原始 `src/types/*.ts`，未在此次 session 變動）
-
----
-
-## 八、各頁面規格
-
-### 8.0 全站共用
-
-#### App.vue — 回到頂端按鈕
-
-- `window.scrollY > 300` 時浮現右下角圓形按鈕（44×44px，黃邊框白底）
-- `fade-up` Transition 動畫（opacity + translateY）
-- hover 變黃底
-- 點擊 `window.scrollTo({ top: 0, behavior: 'smooth' })`
-
-#### Favicon（`index.html`）
-
-```html
-<link rel="icon" href="data:image/svg+xml,<svg ...>
-  <rect fill='%23E8C13A' rx='50'/>
-  <text x='50' y='50' dominant-baseline='central' text-anchor='middle' ...>D</text>
-</svg>">
-```
-- 圓形黃底，「D」水平 + 垂直置中（`dominant-baseline='central'`）
-
----
-
-### 8.1 首頁 `/` — HomeView
-
-#### HeroCard（3 欄版面）
+### 後端照片 Upload 規格
 
 ```
-左欄                中欄                         右欄
-──────              ──────────────────           ──────────────────
-姓名（26px）        96px 圓形照片×2              白色格言卡片
-台北/臺中/男/特質   （background: ink-2）         「你不需要很厲害才能開始
-職務標籤列          社群連結 icon 列              但至少要勇於嘗試」
+POST /{resource}/{id}/photo  → multipart/form-data（field: "file"）→ 回傳完整物件
+DELETE /{resource}/{id}/photo → 刪除檔案 → 回傳完整物件
+```
+- 支援：JPEG / PNG / WEBP（`image/*`）
+- 最大 5MB
+- 存到 `backend/uploads/{section}/` 並清理舊檔（單張覆蓋）
+
+---
+
+## 八、雙層驗證
+
+### 前端 `validateForm(fd)`（AdminView.vue）
+
+在 Admin Modal 點儲存後、呼叫 API 前：
+
+| Section | 驗證內容 |
+|---------|---------|
+| internships / activities | 月份：`YYYY/MM`；periodTo 可空（→「至今」）|
+| social | 日期：`YYYY-MM-DD`；periodTo 可空 |
+| academic | 年份：`YYYY`；periodTo 可空 |
+| travel | 日期：`YYYY-MM-DD` |
+| projects | type 枚舉：`code/uiux/finance`；members 正整數 |
+| holdings | currency 枚舉：`TWD/USD`；shares/avgPrice/marketPrice 正數 |
+| langcerts | lang 枚舉：`en/jp`；pct 0–100 |
+| certgroups | domain 枚舉：`finance/it` |
+| futureplans | phase 枚舉：`short/mid-short/mid` |
+| social | esgType 枚舉：`Environmental/Social/Governance` |
+
+錯誤訊息格式：`「欄位名稱」說明`（中文，明確）
+
+### 後端 Pydantic v2 `@field_validator`
+
+所有 `*In` schemas 均有對應驗證，422 response 由前端 `apiFetch` 統一顯示。
+
+---
+
+## 九、期間欄位格式
+
+| 場景 | 格式 | 範例 |
+|------|------|------|
+| 月份期間（實習/活動/作品集） | `YYYY/MM – YYYY/MM` | `2025/07 – 2025/09` |
+| 持續中（月份） | `YYYY/MM – 至今` | `2024/09 – 至今` |
+| 年份期間（求學） | `YYYY – YYYY` | `2021 – 2025` |
+| 日期（社會參與 periodFrom/To） | `YYYY-MM-DD`（分開欄位） | `2025-03-01` |
+
+Admin 表單均拆成 `periodFrom` + `periodTo` 兩個輸入欄位。  
+`buildPeriod(from, to)` → `` `${from.trim()} – ${to.trim() || '至今'}` ``  
+`parsePeriod(period)` → split on `'–'`（em dash）
+
+---
+
+## 十、Admin Panel 架構
+
+### 元件結構
+
+```
+AdminView.vue          — 資料狀態 / API calls / validateForm / saveModal / deleteItem
+  ├── AdminSidebar.vue — 左側深色導覽列 + 登出
+  │     props: sections, currentSection
+  │     emits: select(key), logout
+  ├── AdminTable.vue   — 通用資料表（每個 section 一個）
+  │     props: title, columns, rows, ids
+  │     emits: add, edit(id), delete(id)
+  └── AdminModal.vue   — 新增 / 編輯 Modal
+        props: open, mode, sectionLabel, fields, initialFormData, current,
+               saving, saveError, editingPhotos, editingPhotoUrl, photoUploading
+        emits: close, save(formData, pendingMultiFiles, pendingSingleFile),
+               upload-multi, delete-multi, upload-single-edit, delete-single-edit
 ```
 
-**社群連結（已更正）：**
+### AdminModal 資料流
 
-| 平台 | URL |
-|------|-----|
-| Instagram | `https://www.instagram.com/_daniellife_` |
-| LinkedIn | `https://www.linkedin.com/in/yenting2003` |
+```
+openAdd()  → modalInitialFormData = 空白欄位  → modalOpen = true
+openEdit() → modalInitialFormData = 現有資料  → 設定 editingPhotos/editingPhotoUrl → modalOpen = true
+AdminModal watch(open) → localFormData = {...initialFormData}（重置 pending photo state）
+User 填表 → localFormData（本地）
+點儲存 → emit('save', { formData, pendingMultiFiles, pendingSingleFile })
+AdminView.handleModalSave → validateForm(fd) → saveModal(fd, files)
+  ├── add mode：createXxx → 逐一 uploadXxxPhoto（pending files）→ push list
+  └── edit mode：updateXxx → replaceInList
+```
 
-#### InternSection
-- 橫向滾動 slider（`scroll-snap`）+ 右側 `›` 箭頭（`scrollBy 320px`）
-- 每張卡：公司 / 部門職位 / 照片佔位 / 貢獻 3 行截斷 / 查看更多按鈕
-- **查看更多**：Teleport Modal，顯示完整資訊
+### 12 個管理區塊
 
-#### ProjectSection
-- 3 個自訂 Dropdown 篩選（類型 / 技術 / 人數）
-- 2×2 CSS Grid，Badge 顏色依 type
-
-#### CertSection
-- 3 欄，語言欄進度條動畫（IntersectionObserver）
-
-#### AcademicSection
-- SVG `viewBox="0 0 900 300"` 曲線 + 🚗 動畫 + 節點圓圈
-
-#### FuturePlanSection
-- 近 5 年金字塔三行（short / mid-short / mid）
-
----
-
-### 8.2 課外活動 `/activities` — ActivitiesView
-
-**領導 / 社團經驗**
-- 卡片：左（標題、服務機構、期間、貢獻 3 行截斷）+ 右（2 張照片 Grid、查看更多）
-- Teleport Modal：顯示完整內容
-
-**造訪過國家 — Leaflet 世界地圖**
-
-- **地圖容器**：440×380px 矩形（≤1024px 響應為 100% × 320px）
-- **資料來源**：`https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json`（TopoJSON，~100KB）
-- **轉換**：`topojson.feature()` → GeoJSON Layer 交給 Leaflet
-- **互動**：zoom（+/−鍵）+ drag 啟用，scroll wheel 禁用（不攔截頁面滾動）
-- **訪過的國家**：填黃色 `#E8C13A`，hover 深黃 `#c9a500`，cursor pointer
-- **未訪國家**：填灰色 `#d1d5db`
-- **Country Code 對照表**（ISO 3166-1 numeric）：
-
-| 中文 | ISO numeric |
-|------|------------|
-| 臺灣 / 台灣 | 158 |
-| 日本 | 392 |
-| 澳大利亞 | 36 |
-| 美國 | 840 |
-| 英國 | 826 |
-| 法國 | 250 |
-| 德國 | 276 |
-| 韓國 | 410 |
-| 中國 | 156 |
-| 泰國 | 764 |
-| 新加坡 | 702 |
-| 義大利 | 380 |
-| 西班牙 | 724 |
-| 加拿大 | 124 |
-
-- **點擊國家** → 開啟 TravelEntry Teleport Modal（人事時地物）
-- fetch 失敗時靜默 fallback（空白地圖，不 crash）
-
-**5 洲別卡片**
-
-| 洲 | key | 顏色 |
-|----|-----|------|
-| 歐洲 | Europe | `#2563eb` |
-| 亞洲 | Asia | `#E8C13A` |
-| 非洲 | Africa | `#303030` |
-| 澳洲 | Australia | `#0d9488` |
-| 美洲 | Americas | `#C17055` |
-
-- 點擊國家條目 → Travel Modal（viewEntry）
-- 點擊「新增國家、見聞」→ **新增旅行日記 Modal**
-
-**新增旅行日記 Modal（人事時地物）**
-
-- 標題：「地區（自動帶入）：{洲名}」（以 `CONT_ZH` 對應中文）
-- 顏色繼承洲別（`--accent` + `--accent-text` CSS 自訂屬性傳入 modal）
-- 5 個輸入列（底線樣式）：
-
-  | icon | 欄位 | placeholder |
-  |------|------|-------------|
-  | 人 | companions | 和誰一起去？ |
-  | 事 | activities | 做了什麼有趣的事情？ |
-  | 時 | visitedAt | 詳細的時間點？ |
-  | 地 | city | 去 {洲} 的哪個國家？哪座城市？ |
-  | 物 | purchases | 有沒有買什麼東西？ |
-
-- 4 格照片上傳（dashed 虛線框 → file input → ObjectURL 預覽）
-- 「新增旅行日記」送出按鈕（TODO: POST 後端）
-- icon 圓圈、送出按鈕、focus 底線、洲名文字顏色全部繼承 `--accent`
+| section key | 中文 | 照片 | 期間欄位格式 |
+|-------------|------|------|-------------|
+| internships | 實習經歷 | 單張（edit + add） | YYYY/MM |
+| projects | 作品集 | 無 | YYYY/MM |
+| activities | 課外活動 | 多張最多 4（edit + add） | YYYY/MM |
+| social | 社會參與 | 單張（edit + add） | YYYY-MM-DD（分開欄位） |
+| literature | 文學作品 | 無 | YYYY.MM |
+| papers | 論文文獻 | 無 | 年份 YYYY |
+| holdings | 持股明細 | 無 | — |
+| academic | 求學歷程 | 無 | YYYY（年份） |
+| futureplans | 未來規劃 | 無 | — |
+| langcerts | 語言證照 | 無 | — |
+| certgroups | 財會/資訊證照 | 無 | — |
+| travel | 旅遊記錄 | 多張最多 4（edit + add） | YYYY-MM-DD |
 
 ---
 
-### 8.3 社會參與 `/social` — SocialView
+## 十一、各頁面規格
 
-- Stage 1 Tab：ESG分類 / SDGs分類（pill 樣式）
-- Stage 2 Sub-Tab（僅 ESG）：E（yellow）/ S（green）/ G（terracotta）
-- 活動卡 + ESG badge + Teleport Modal
-- 右側 Sidebar：checkbox 篩選
+### 11.0 全站共用
+
+**App.vue — 回到頂端按鈕**
+- `scrollY > 300px` 浮現右下角（44×44px，黃邊框白底）
+- hover 變黃底；`scrollTo({ top: 0, behavior: 'smooth' })`
+
+**Favicon（`index.html`）**
+- SVG inline，圓形黃底，「D」`dominant-baseline='central'` 垂直置中
 
 ---
 
-### 8.4 文學天地 `/literature` — LiteratureView
+### 11.1 首頁 `/` — HomeView
 
-**整體色調：白底台鐵懷舊風**
+**HeroCard（3 欄）**
+- 左：姓名、台北/臺中/男/特質、職務標籤列
+- 中：96px 圓形照片×2、Instagram `_daniellife_`、LinkedIn `yenting2003`
+- 右：格言卡「你不需要很厲害才能開始 / 但至少要勇於嘗試」
 
-- 主背景：`#faf9f7`（暖白）
-- 鐵道區塊背景：`#f5f2ee`（羊皮紙色）
+**其他 Section**
+- InternSection：橫向 scroll-snap slider + Teleport Modal
+- ProjectSection：3 個 Dropdown 篩選 + 2×2 Grid
+- CertSection：3 欄 + 語言進度條動畫（IntersectionObserver）
+- AcademicSection：SVG 曲線 + 🚗 動畫
+- FuturePlanSection：近 5 年金字塔（short / mid-short / mid）
 
-**火車時間軸**
+---
 
-- 枕木（crossties）：`rgba(120, 90, 58, 0.45)` repeating-linear-gradient
-- 雙軌（上下）：`2.5px solid #8a8a8a`（鐵灰色）
-- 已走過路段（rail-fill）：黃色雙軌 + 淡黃填色
-- 🚂 火車 emoji + `easeInOut` 動畫（DURATION 3800ms）+ IntersectionObserver（進入 viewport 觸發）
-- 導覽按鈕 ◄ ►：點擊滾動至前/後站
+### 11.2 課外活動 `/activities` — ActivitiesView
 
-**站牌卡片（light 版）**
+ActivitiesView 擁有：experiences / continents / leafletMap / modal state / addEntry state。
 
-| 元素 | 顏色 |
+| 元件 | 職責 |
 |------|------|
-| card 邊框 | `#d8cfc4` |
-| card-top 背景 | `#fffbf4`（奶油色） |
-| 年級標籤 | `var(--color-ink-3)` |
-| 得獎標題 | `var(--color-ink-1)` |
-| 得獎結果 | `#8b6200`（深琥珀） |
-| card-bottom 背景 | `#f0ebe2` |
-| 連接柱 | `#c4b8a8` → 已到達 `#a89880` |
-| 軌道圓點 | `#e0d8cc` / `#b8a88a` → 已到達黃色 |
+| `ExperienceCard` | 領導/社團卡片；左欄標題/組織/期間/貢獻截斷，右欄 2 張照片 Grid；emit `view-more` |
+| `ExperienceModal` | 課外活動詳情 Teleport Modal；prop `experience` |
+| `TravelEntryModal` | 旅遊記錄詳情 Teleport Modal；prop `entry`；顯示人事時地物 + 照片 |
+| `AddTravelModal` | 新增旅行日記；prop `continent`；owns form state；呼叫 `createTravelEntry` + `uploadTravelPhoto`；emit `submitted` 通知父層刷新 |
 
-**文學作品（台鐵時刻板風格 · 白底）**
+**Leaflet 地圖**：440×380px；world-atlas TopoJSON；訪國黃色高亮；點擊 → TravelEntryModal。
 
-| 元素 | 顏色 |
+---
+
+### 11.3 社會參與 `/social` — SocialView
+
+SocialView 擁有：stage1 / esgSub / appliedEsg / appliedSdg / activities / activeModal。
+
+| 元件 | 職責 |
 |------|------|
-| card 背景 | `#ffffff` |
-| card 邊框 | `#e0d8cc` |
-| header 背景 | `var(--color-primary)` 黃色 |
-| header 標題文字 | `#1a1000`（深色，高對比） |
-| 閱讀全文按鈕 | `#15803d` 邊框 + 文字 |
-| 欄位標籤背景 | `#f5f0e8` |
-| 年份值（--yellow） | `#7a5800`（深琥珀） |
-| 得獎值（--green） | `#166534`（深綠） |
+| `FilterSidebar` | ESG × SDGs checkbox 篩選；owns selectedEsg / selectedSdg；emit `apply(esg, sdg)` |
+| `ActivityCard` | 社會參與卡片；ESG badge + 照片（`mediaUrl` 或 placeholder）；emit `view-more` |
+| `ActivityModal` | 詳情 Teleport Modal；prop `activity` |
 
 ---
 
-### 8.5 市場資訊 `/market` — MarketView
+### 11.4 文學天地 `/literature` — LiteratureView
 
-**Section 1：股票市場**
+LiteratureView 擁有：timeline / works / worksSectionEl；`scrollToWork(workId)` 處理 click-work。
 
-- 使用 `MarketOverviewPanel.vue` 元件（`src/components/market/MarketOverviewPanel.vue`）
-- 兩個 Panel：`defaultTab="TW"` 和 `defaultTab="US"`
-- Props：`defaultTab?: 'TW' | 'ASIA' | 'EU' | 'US'`
-- 內部：Tab 切換 + 指數列表（left 42%）+ OHLC 詳情 + SVG sparkline（right 58%）
-- 資料：嘗試 Yahoo Finance `query2.finance.yahoo.com`（CORS 實驗性）；失敗時靜默 fallback mock data
-- mock data 用 `genIntraday(price, chg, n=48)` 生成 sin/cos noise 折線
-- SVG gradient ID 含 `uid` 避免多 Panel 衝突
-
-**Section 2：外匯市場**
-
-- TradingView `embed-widget-mini-symbol-overview.js`（免費 tier）
-- 3 個 widget：`FX_IDC:USDTWD` / `FX_IDC:JPYTWD` / `FX_IDC:EURTWD`
-- colorTheme: 'light'，height: 300px
-
-**Section 3：利率與殖利率**
-
-- FRED St. Louis Fed iframes（height: 520px，無 scrolling=no）
-- `DGS10`：美國 10 年期公債殖利率
-- `FEDFUNDS`：Fed 聯邦基金目標利率
-- URL 格式：`https://fred.stlouisfed.org/graph/?id=FEDFUNDS&cosd=2010-01-01`
-- **注意**：不要在 FRED URL 加多餘 params（`fq=`, `fam=` 等），否則月頻指標顯示 sad face 錯誤
-
-**Section 4：其他總經重要指標**
-
-- World Bank Open Data API（CORS 友好，免 key）
-- **國家切換按鈕**：🇺🇸 美國 / 🇹🇼 台灣（`wbCountry` ref，切換後重新 fetch）
-- GDP 年增率：`NY.GDP.MKTP.KD.ZG`
-- CPI 通膨率：`FP.CPI.TOTL.ZG`
-- 自製 CSS 垂直長條圖：正值藍色、負值紅色、CPI 黃色
-- `fetchWB(indicator, country)` → `country` 預設 `'US'`，可傳 `'TW'`
+| 元件 | 職責 |
+|------|------|
+| `TrainTimeline` | 台鐵時間軸動畫；owns 全部動畫狀態（arrivedCount / animId / railFillEl 等）；IntersectionObserver 觸發/重置；emit `click-work(workId)` |
+| `WorkCard` | 台鐵時刻板風格文學作品卡；有 `data-work-id` 屬性供 scrollToWork 定位高亮 |
 
 ---
 
-### 8.6 總經新聞 `/news` — NewsView
+### 11.5 市場資訊 `/market` — MarketView
 
-**左側新聞面板**
-- 搜尋列（Enter / 按鈕觸發 `doSearch()`）
-- Region Tab：US / TAIWAN
-- **TAIWAN tab 警告 banner**：黃色 ⚠ 通知，說明目前為 Guardian API 暫時替代，正式版需後端串接 ITIS
-- 新聞卡：title → summary（stripHtml） → footer（時間、來源 badge）
-- 分頁（PAGE_SIZE = 5）
+MarketView 純組合（無自身 data state）。
 
-**資料來源（Guardian Open Platform API）**
-
-```
-GUARDIAN_KEY = 'test'（開發用）
-US tab:     section=business&q=economy finance
-TAIWAN tab: q=taiwan economy finance（暫時，最終換 ITIS）
-```
-
-**ITIS 整合（待後端）**
-
-- URL：`https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp?td=YYYY/M/D`
-- CORS 限制 + HTML-only，需後端 proxy
-- 後端路由：`GET /api/news/taiwan?date=YYYY-M-D` → 爬 ITIS → 回 JSON
-
-**右側 AI 聊天室（UI only）**
-
-- 標題：「Daniellife 會計丹尼」，D 圓圈 icon
-- 氣泡：user=深色 / assistant=黃色半透明
-- `position: sticky; top: var(--space-6)`
-- `// TODO: call GitHub Models API (GPT-4o)` 佔位
+| 元件 | 職責 |
+|------|------|
+| `MarketOverviewPanel` | 大盤總覽（TW/US），fallback mock SVG sparklines |
+| `ForexSection` | TradingView mini-symbol-overview；USD/JPY/EUR → TWD；owns DOM refs |
+| `YieldSection` | FRED iframes（DGS10 + FEDFUNDS）；不加多餘 params 避免 sad face 錯誤 |
+| `WorldBankSection` | World Bank API；GDP/CPI；🇺🇸/🇹🇼 切換；owns wbCountry / gdpData / cpiData |
 
 ---
 
-### 8.7 理財規劃 `/finance` — FinanceView（需登入）
+### 11.6 總經新聞 `/news` — NewsView
 
-**5 個指標卡（彩色頂部邊框）**
+NewsView 純組合（無自身 data state）。
 
-| 卡片 | 邊框色 |
-|------|--------|
-| TWD 總市值 | `primary` |
-| TWD 損益 | `#16a34a` |
-| TWD 累積股息 | `secondary` |
-| USD 總市值 | `tertiary` |
-| USD 報酬率 | `#2563eb` |
-
-**2 個 SVG 甜甜圈圖（r=46，`stroke-width: 16`）**
-- 資產配置：TWD（primary yellow）/ USD（tertiary）
-- 券商分布：國泰世華（secondary）/ 富邦（`#2563eb`）
-
-**持股明細表（11 欄）**
-- 欄位：股票代碼、名稱、幣別（badge）、券商、股數、均價、市價、市值、損益、報酬率、累積股息
-- 虧損 = `#dc2626`，獲利 = `#16a34a`
+| 元件 | 職責 |
+|------|------|
+| `NewsList` | 搜尋 + US/TAIWAN Tab + 分頁（PAGE_SIZE=5）；owns region / keyword / page / items；Guardian API（key=`test`）；TAIWAN tab 有黃色 ⚠ banner |
+| `NewsCard` | `<a>` 連結卡；標題 + 摘要（2-line clamp）+ source badge |
+| `ChatPanel` | AI 聊天室 UI；owns messages / chatInput；TODO 串接 GitHub Models |
 
 ---
 
-### 8.8 論文統整 `/thesis` — ThesisView（需登入）
+### 11.7 理財規劃 `/finance` — FinanceView（需登入）
 
-**碩論注意事項（可收合）**
-- 黃色 Collapsible Header（「碩論注意事項、教授建議」）
-- 展開後顯示筆記 + 「編輯」按鈕
-- 編輯模式：`<textarea>` + 取消 / 儲存
+FinanceView 擁有：holdings / summary / allocationSlices / brokerSlices（computed）。
 
-**碩論靈感 Kanban（3 欄，便利貼拖曳）**
-
-| 欄 | status | label |
-|----|--------|-------|
-| 左 | pending | 待確認（重量提） |
-| 中 | rejected | 被拒絕 / 不可執行 |
-| 右 | approved | 可以執行 |
-
-- 便利貼樣式：`background: #fffde7`，cursor grab，`box-shadow`
-- HTML5 Drag & Drop（`draggable`, `@dragstart`, `@dragover.prevent`, `@drop`）
-- `＋ 新增便利貼` 開 modal
-
-**參考文獻統整（篩選 + Notion 連結）**
-- Topic / Journal Dropdown 篩選（client-side computed）
-- Notion 連結按鈕（黑底白 N，placeholder alert）
-- 表格欄位：作者+年份（合欄）、論文名稱、期刊、研究目的、研究貢獻
+| 元件 | 職責 |
+|------|------|
+| `MetricCards` | 5 個彩色頂部邊框指標卡；prop `summary: PortfolioSummary` |
+| `DonutChart` | 可複用 SVG 甜甜圈；prop `slices: { label, pct, color }[]`；接受 CSS var 字串 |
+| `HoldingsTable` | 11 欄持股明細表；prop `holdings: Holding[]`；紅綠損益 + 幣別 badge |
 
 ---
 
-### 8.9 功能管理 `/admin` — AdminView（需登入）
+### 11.8 論文統整 `/thesis` — ThesisView（需登入）
 
-**版面**
-- 深色左側欄（`background: var(--color-ink-1)`）：7 個區塊切換 + 登出
-- 右側：`AdminTable` 元件
+ThesisView 純組合（無自身 data state）。
 
-**7 個資料區塊**：實習經歷、作品集、課外活動、社會參與、文學作品、論文文獻、持股資料
-
-**AdminTable（`src/components/admin/AdminTable.vue`）**
-```ts
-Props: title, columns, rows, ids
-Emits: add, edit(id), delete(id)
-```
+| 元件 | 職責 |
+|------|------|
+| `ThesisNotePanel` | 碩論筆記；owns data；collapsible + view/edit 模式；`getThesisNote` / `saveThesisNote` |
+| `KanbanBoard` | 3 欄 Kanban + HTML5 drag-drop + 新增 Modal（Teleport）；owns ideas / draggingId / dragOverCol；`.kanban-empty` 加 `pointer-events:none` 修正空欄 drop 無效問題 |
+| `PapersTable` | 參考文獻表；owns allPapers / filterTopic / filterJournal / paperKeyword；`filteredPapers` computed；搜尋用 SVG icon（已移除 Notion 同步按鈕） |
 
 ---
 
-### 8.10 登入 `/danieladmin` — LoginView
+### 11.9 功能管理 `/admin` — AdminView（需登入）
 
-- 黃色邊框卡片，呼叫 `mockLogin(email, password)`（讀取 `.env.local`）
-- 登入成功 → `auth.login()` → redirect `/admin`
-
----
-
-### 8.11 未授權 `/403` — ForbiddenView
-
-- 大型「403」字樣（96px，primary 黃色）
-- 按鈕：前往登入 / 回首頁
+見第十節「Admin Panel 架構」完整說明。
 
 ---
 
-## 九、Auth 與導覽列
-
-### `stores/auth.ts`
-- `isLoggedIn`, `user: { name, email } | null`
-- `login(userData)` / `logout()`
-
-### AppNavbar
-- 固定頂部，`background: var(--color-primary)`
-- Logo：圓形（`border-radius: 50%`），文字 "D"
-- 未登入：5 個公開連結；已登入：額外顯示論文/理財/功能管理
-- RWD < 768px：漢堡選單
-
-### AppFooter
-- `background: var(--color-ink-1)`，精簡 padding
+### 11.10 登入 `/danieladmin` — LoginView
+- Google One-Tap Sign-In（GSI）
+- 成功 → `auth.login()` → redirect `/admin`
 
 ---
 
-## 十、已完成 / 待辦事項
-
-### ✅ 已完成
-
-- [x] Design Token 系統（`tokens.css`）
-- [x] TypeScript 介面定義（7 個型別檔）
-- [x] Mock API 層（8 個模組）
-- [x] Pinia Auth Store + Vue Router（Navigation Guard）
-- [x] AppNavbar（圓形 Logo、RWD）、AppFooter
-- [x] **全站回到頂端按鈕**（App.vue，scroll > 300px 浮現）
-- [x] **Favicon D 垂直水平置中**（`dominant-baseline='central'`）
-- [x] HomeView（HeroCard + 5 個子元件）
-- [x] **HeroCard 社群連結修正**（Instagram: `_daniellife_`、LinkedIn: `yenting2003`）
-- [x] **座右銘更新**：「你不需要很厲害才能開始 / 但至少要勇於嘗試」
-- [x] ActivitiesView（領導 + 社團 + **Leaflet 世界地圖** + 3 個 Modal）
-- [x] **造訪地圖互動**（hover 高亮、click → TravelEntry modal、zoom/drag）
-- [x] **新增旅行日記 popup**（人事時地物 form + 4 格照片上傳 + 洲別顏色繼承）
-- [x] SocialView（ESG / SDGs 篩選 + Modal）
-- [x] **LiteratureView 白底台鐵懷舊風**（全面改色，移除暗色背景）
-- [x] MarketView（MarketOverviewPanel + TradingView Forex + FRED + World Bank）
-- [x] **總經指標 美國 / 台灣 切換**（World Bank API，`wbCountry` 切換）
-- [x] NewsView（新聞分頁 + AI 聊天室 UI + **ITIS 警告 banner**）
-- [x] FinanceView（指標卡 + SVG 甜甜圈 + 持股表）★
-- [x] ThesisView（便利貼 Kanban + drag-drop + 文獻篩選 + Notion 按鈕）★
-- [x] LoginView（`/danieladmin`）、ForbiddenView、AdminView + AdminTable ★
-
-
-- [x] **FastAPI 後端骨架**（28 個 endpoint、JWT、CORS、lifespan `create_all`）
-- [x] **MySQL Schema**（15 張資料表，SQLAlchemy ORM auto-create）
-- [x] **JWT 認證**（POST /api/auth/login → Bearer token，localStorage 持久化）
-- [x] **前後端串接**：activities / finance / thesis 換成真實 apiFetch
-- [x] **seed.py**（一鍵填入所有 mock 初始資料）
-
-### ⏳ 待開發（前後端）
-
-- [ ] NewsView AI 聊天室接通 GitHub Models（GPT-4o）
-- [ ] Notion OAuth 串接（ThesisView 文獻同步）
-- [ ] 旅遊照片上傳持久化（目前 ObjectURL，需後端 file upload endpoint）
-- [ ] ITIS HTML proxy：`GET /api/news/taiwan?date=YYYY-M-D`
-- [ ] Homepage / Social / Literature API 串接（目前仍用 mock data）
-
-### ⏳ 待部署
-
-- [ ] Docker（前後端穩定後建立）
+### 11.11 未授權 `/403` — ForbiddenView
+- 大型「403」（primary 黃色）+ 前往登入 / 回首頁
 
 ---
 
-## 十一、MySQL 資料庫 Schema
+## 十二、後端 Schema（資料表）
 
-> Engine: InnoDB / Charset: utf8mb4_unicode_ci
-> 由 SQLAlchemy `Base.metadata.create_all()` 在首次啟動時自動建立。
-> 15 張表，`timeline_events.work_id → literature_works.id` 為唯一 FK；其餘無跨表約束。
+> SQLAlchemy ORM auto-create on startup。MySQL InnoDB / utf8mb4_unicode_ci。
 
-### 正規化說明
+### 核心 Type 對照
 
-| 層級 | 狀態 | 說明 |
-|------|------|------|
-| 1NF | ⚠️ 部分 JSON | `photos` / `tech` / `links` 存為 JSON 字串（`TEXT`），非原子值 |
-| 2NF | ✅ | 無部分依賴 |
-| 3NF | ✅ | 無遞移依賴 |
-| FK  | ⚠️ 部分 FK | `timeline_events.work_id → literature_works.id`（nullable）；其餘單用戶無需跨表約束 |
+| TypeScript | 後端欄位 | 格式 |
+|-----------|---------|------|
+| `period: string` | `period_from/to` (DATE) | `YYYY/MM – YYYY/MM`（前端組合）|
+| `photos: string[]` | `photos` TEXT | JSON 字串陣列 |
+| `photoUrl?: string` | `photo_url` VARCHAR(500) | 單張路徑 |
+| `sdgNumbers: SdgNumber[]` | `sdg_numbers` TEXT | JSON 整數陣列 |
 
----
+### 主要資料表（選列）
 
-### `users`
+**`internships`**：company / dept / role / period（VARCHAR）/ contribution / photo_url
 
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `name` | VARCHAR(100) NOT NULL | 顯示名稱 |
-| `email` | VARCHAR(255) NOT NULL UNIQUE | 登入帳號，index |
-| `hashed_password` | VARCHAR(255) NOT NULL | bcrypt hash |
-| `created_at` | DATETIME | server_default NOW() |
+**`projects`**：name / type（ProjectType）/ techLabel / tech / members / period / core / githubUrl / youtubeUrl / star（JSON）/ createdAt
 
----
+**`experiences`**（課外活動）：type / title / organization / period / contribution / photos（JSON）
 
-### `internships`
+**`travel_entries`**：country / city / continent / visited_at / journal / companions / activities / purchases / photos（JSON）
 
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `company` | VARCHAR(200) NOT NULL | 公司名稱 |
-| `department` | VARCHAR(200) NOT NULL | 部門 + 職稱 |
-| `start_date` | DATE NULL | 開始月份（日固定為 01）|
-| `end_date` | DATE NULL | 結束月份；NULL 表示「至今」|
-| `contribution` | TEXT NOT NULL | 貢獻描述 |
-| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
+**`social_activities`**：name / organization / esg_type / sdg_numbers（JSON）/ period_from / period_to / contribution / reflection / photo_url
 
-> API 回傳額外計算欄位 `period: str`（如 `"2024/07 – 2024/09"`），由 start/end 格式化。
+**`academic_milestones`**：school / major / period / gpa / rank / sort_order / facts（JSON）
 
----
+**`future_plans`**：phase / title / subtitle / items（JSON）/ sort_order
 
-### `projects`
+**`lang_certs`**：lang（en/jp）/ name / score / pct
 
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `title` | VARCHAR(200) NOT NULL | 專案名稱 |
-| `type` | VARCHAR(20) NOT NULL | `finance` \| `code` \| `UIUX` |
-| `tech` | TEXT default `[]` | JSON 字串陣列（技術標籤）|
-| `people` | INT default 1 | 團隊人數 |
-| `summary` | TEXT NOT NULL | 簡介 |
-| `links` | TEXT default `[]` | JSON 字串陣列（GitHub / YouTube URL）|
+**`cert_groups`**：domain（finance/it）/ category / items（JSON）/ sort_order
+
+**`literature_works`**：title / age_written / period / awards / summary / full_text
+
+**`thesis_papers`**：topic / name / journal / authors / year / purpose / contribution（21 筆 AIS DA Seminar 論文已由 `seed_papers.py` 匯入）
+
+**`thesis_ideas`**：title / content / status（`pending` / `approved` / `rejected`）
+
+**`holdings`**：symbol / name / currency / broker / shares / avg_price / market_price / dividend
+
+**`thesis_notes`**（singleton）：content / updated_at
 
 ---
 
-### `cert_items`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `category` | VARCHAR(20) NOT NULL | `language` \| `finance` |
-| `name` | VARCHAR(200) NOT NULL | 證照名稱（如 `TOEIC`）|
-| `level` | VARCHAR(100) NULL | 等級 / 分數（如 `865`、`N4`）|
-| `progress` | INT default 0 | 進度百分比（0–100）|
-
----
-
-### `academic_milestones`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `label` | VARCHAR(200) NOT NULL | 學校名稱 |
-| `sublabel` | VARCHAR(200) NOT NULL | 科系 |
-| `year` | VARCHAR(10) NOT NULL | 年份 |
-| `x` | DOUBLE NOT NULL | SVG 曲線 x 座標 |
-| `y` | DOUBLE NOT NULL | SVG 曲線 y 座標 |
-
----
-
-### `future_plans`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `horizon` | VARCHAR(20) NOT NULL | `short` \| `mid-short` \| `mid` |
-| `content` | TEXT NOT NULL | 計畫內容 |
-| `order` | INT default 0 | 顯示順序 |
-
----
-
-### `experiences`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `type` | VARCHAR(20) NOT NULL | `leadership` \| `club` |
-| `title` | VARCHAR(200) NOT NULL | 職務 / 社團名稱 |
-| `organization` | VARCHAR(200) NOT NULL | 組織 / 學校 |
-| `start_date` | DATE NULL | 開始月份（日固定為 01）|
-| `end_date` | DATE NULL | 結束月份；NULL 表示「至今」|
-| `contribution` | TEXT NOT NULL | 貢獻描述 |
-| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
-
-> API 接受 `period: str`（前端傳 `"YYYY/MM – YYYY/MM"`），後端自動拆解成 start/end 儲存。
-> 回傳時亦包含 `startDate` / `endDate`（ISO）與計算欄位 `period`。
-
----
-
-### `travel_entries`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `country` | VARCHAR(100) NOT NULL | 國家（中文，如 `日本`）|
-| `city` | VARCHAR(100) NOT NULL | 城市 |
-| `continent` | VARCHAR(50) NOT NULL | 洲別 key（`Asia` / `Europe` / …）|
-| `visited_at` | DATE NOT NULL | 到訪日期；API 回傳 ISO `"YYYY-MM-DD"` |
-| `journal` | TEXT NULL | 旅行日記 |
-| `companions` | TEXT NULL | 同行者（人）|
-| `activities` | TEXT NULL | 做了什麼（事）|
-| `purchases` | TEXT NULL | 購買了什麼（物）|
-| `photos` | TEXT default `[]` | JSON 字串陣列（圖片 URL）|
-
----
-
-### `social_activities`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `name` | VARCHAR(200) NOT NULL | 活動名稱 |
-| `organization` | VARCHAR(200) NOT NULL | 主辦 / 合作組織 |
-| `esg_type` | VARCHAR(20) NOT NULL | `Environmental` \| `Social` \| `Governance` |
-| `sdg_numbers` | TEXT default `[]` | JSON 整數陣列（如 `[3, 13]`），SDG 編號 1–17 |
-| `period_from` | DATE NOT NULL | 開始日期 |
-| `period_to` | DATE NULL | 結束日期；NULL 表示單日或持續中 |
-| `contribution` | TEXT NOT NULL | 具體貢獻 |
-| `reflection` | TEXT NOT NULL default `""` | 個人反思 |
-| `photo_url` | VARCHAR(500) NULL | 封面圖片 URL |
-
----
-
-### `timeline_events`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `grade_label` | VARCHAR(100) NOT NULL | 就讀階段（如 `高中 / 高一`）|
-| `award_title` | VARCHAR(200) NOT NULL | 獎項 / 賽事名稱 |
-| `result` | VARCHAR(100) NOT NULL | 得獎結果（如 `散文組 佳作`）|
-| `date` | DATE NOT NULL | 比賽 / 頒獎日期；API 回傳 `"YYYY.MM.DD"` |
-| `work_id` | INT NULL FK | → `literature_works.id`；可連結對應作品 |
-
----
-
-### `literature_works`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `title` | VARCHAR(200) NOT NULL | 作品名稱 |
-| `age_written` | INT NULL | 創作時年齡 |
-| `period` | DATE NULL | 創作月份（日固定 01）；API 回傳 `"YYYY.MM"` |
-| `awards` | TEXT NOT NULL default `""` | 得獎紀錄（完整描述字串）|
-| `summary` | TEXT NOT NULL | 摘要 / 節錄（卡片顯示）|
-| `full_text` | TEXT NULL | 全文（可選）|
-
----
-
-### `holdings`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `symbol` | VARCHAR(20) NOT NULL | 股票代碼（如 `00713`）|
-| `name` | VARCHAR(200) NOT NULL | 股票名稱 |
-| `currency` | VARCHAR(5) NOT NULL | `TWD` \| `USD` |
-| `broker` | VARCHAR(100) NOT NULL | 券商（如 `國泰世華`）|
-| `shares` | DOUBLE NOT NULL | 持股數量 |
-| `avg_price` | DOUBLE NOT NULL | 平均成本價 |
-| `market_price` | DOUBLE NOT NULL | 現價（手動更新）|
-| `dividend` | DOUBLE default 0 | 累計股息 |
-
-> 計算欄位（不存 DB，由 Pydantic `@computed_field` 回傳）：
-> `currentValue = shares × market_price`、`pnl = (market_price − avg_price) × shares`、`returnRate = pnl / (avg_price × shares) × 100`
-
----
-
-### `thesis_notes`（singleton）
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | 永遠只有 1 筆 |
-| `content` | TEXT NOT NULL | 碩論筆記 Markdown |
-| `updated_at` | DATETIME | server_default NOW() + onupdate |
-
----
-
-### `thesis_ideas`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `title` | VARCHAR(200) NOT NULL | 便利貼標題 |
-| `content` | TEXT NOT NULL | 想法內容 |
-| `status` | VARCHAR(20) NOT NULL default `pending` | `pending` \| `approved` \| `rejected` |
-| `created_at` | DATETIME | server_default NOW() |
-
----
-
-### `thesis_papers`
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `id` | INT PK AUTO | |
-| `topic` | VARCHAR(100) NOT NULL | 主題標籤（如 `LLM`）|
-| `name` | TEXT NOT NULL | 論文完整標題 |
-| `journal` | VARCHAR(300) NOT NULL | 期刊名稱 |
-| `authors` | VARCHAR(500) NOT NULL | 作者列表 |
-| `year` | INT NOT NULL | 發表年份 |
-| `purpose` | TEXT NOT NULL | 研究目的 |
-| `contribution` | TEXT NOT NULL | 研究貢獻 |
-
----
-
-## 十二、環境變數
+## 十三、環境變數
 
 ### 前端（`src/.env.local`，不 commit）
 
-| 變數 | 預設值 | 說明 |
-|------|--------|------|
-| `VITE_API_URL` | `http://localhost:8000` | FastAPI Base URL |
+| 變數 | 預設值 |
+|------|--------|
+| `VITE_API_URL` | `http://localhost:8000` |
 
 ### 後端（`backend/.env`，不 commit）
 
-| 變數 | 預設值 | 說明 |
-|------|--------|------|
-| `DATABASE_URL` | `mysql+pymysql://root:@localhost:3306/daniellife` | MySQL 連線字串 |
-| `SECRET_KEY` | `change-me-…` | JWT 簽名金鑰（32 字元以上）|
-| `ALGORITHM` | `HS256` | JWT 演算法 |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080`（7天）| Token 有效期 |
-| `ADMIN_EMAIL` | `admin@daniellife.com` | DB 無用戶時的 fallback 帳號 |
-| `ADMIN_PASSWORD` | `changeme` | DB 無用戶時的 fallback 密碼 |
-| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS allow origin |
-| `ITIS_BASE_URL` | ITIS URL | 台灣新聞 proxy 來源 |
-
-> 兩個 `.env` 檔均已加入各自 `.gitignore`，永遠不會被 commit。
+| 變數 | 說明 |
+|------|------|
+| `DATABASE_URL` | MySQL 連線字串 |
+| `SECRET_KEY` | JWT 簽名金鑰（32 字元以上）|
+| `ALGORITHM` | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080`（7天）|
+| `ADMIN_EMAIL` | `r14722016@g.ntu.edu.tw`（唯一管理員）|
+| `FRONTEND_ORIGIN` | `http://localhost:5173` |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
 
 ---
 
-## 十三、已知限制與注意事項
+## 十四、開發進度
+
+### ✅ 已完成
+
+**前端 UI**
+- [x] 全站 Design Token + AppNavbar（RWD）+ AppFooter
+- [x] 全站回到頂端按鈕、Favicon D 置中
+- [x] HomeView（HeroCard + 5 個子元件）
+- [x] ActivitiesView（ExperienceCard / ExperienceModal / TravelEntryModal / AddTravelModal + Leaflet 地圖）
+- [x] SocialView（FilterSidebar / ActivityCard / ActivityModal）
+- [x] LiteratureView（TrainTimeline / WorkCard）
+- [x] MarketView（MarketOverviewPanel / ForexSection / YieldSection / WorldBankSection）
+- [x] NewsView（NewsList / NewsCard / ChatPanel）
+- [x] FinanceView（MetricCards / DonutChart / HoldingsTable）
+- [x] ThesisView（ThesisNotePanel / KanbanBoard / PapersTable）
+- [x] LoginView（Google OAuth）、ForbiddenView
+
+**元件架構重整**
+- [x] `common/` → `layout/`（AppNavbar / AppFooter），App.vue 更新 import
+- [x] 所有頁面完整拆分為 feature 元件（activities / social / literature / thesis / news / market / finance）
+- [x] 元件組織：`layout/`（全站框架）+ feature folders（頁面專屬）+ `admin/`（後台）+ `homepage/`（首頁）
+
+**後端 + 串接**
+- [x] FastAPI 全端 API（12 個 section，含照片 upload/delete）
+- [x] Google OAuth 認證取代密碼登入
+- [x] `deps.py` 直接比對 JWT email vs ADMIN_EMAIL（不查 DB）
+- [x] 所有 Pydantic `*In` schemas 加 `@field_validator` 二層防守
+- [x] 前端 `validateForm` 一層防守 + `apiFetch` 422 error 解析
+- [x] `ThesisIdeaIn` / `ThesisIdeaUpdate` status 值修正為 `pending / approved / rejected`（原錯誤值 `reading / done`）
+
+**論文資料**
+- [x] `seed_papers.py`：21 篇 AIS DA Seminar 論文全數匯入 `thesis_papers` 表（topic / name / journal / authors / year / purpose / contribution）
+- [x] `PapersTable.vue`：移除 Notion 同步按鈕，搜尋 icon 改為純 SVG（黑白）
+- [x] `KanbanBoard.vue`：修正空欄位 HTML5 drop 無效 bug（`.kanban-empty` 加 `pointer-events: none`）
+
+**Admin Panel**
+- [x] 12 個管理區塊（全 CRUD）
+- [x] 照片管理：internships / activities / social / travel（edit + add mode）
+- [x] 期間欄位拆分（periodFrom + periodTo）
+- [x] AdminView 拆分為 AdminSidebar + AdminModal 元件
+
+### ⏳ 待開發
+
+- [ ] NewsView AI 聊天室串接 GitHub Models（GPT-4o）
+- [ ] ITIS HTML proxy（`GET /api/news/taiwan?date=YYYY-M-D`）
+- [ ] Docker 部署設定
+
+---
+
+## 十五、安全規則
+
+| 規則 | 說明 |
+|------|------|
+| `backend/.env` + `src/.env.local` | **永遠不 commit** |
+| commit message | **不加 Co-Authored-By 署名** |
+| git push | **push 前必須先問確認** |
+| Admin 權限 | 只有 `r14722016@g.ntu.edu.tw` 能進 Admin |
+| `noUncheckedIndexedAccess` | `tsconfig.app.json` 有此設定；`Record<string,string>` 存取一律加 `?? ''` |
+
+---
+
+## 十六、已知限制
 
 | 項目 | 說明 |
 |------|------|
-| 台灣地圖高亮 | `world-atlas` 110m 解析度下台灣面積過小可能不顯示；ISO numeric 158 已設定 |
+| 台灣地圖高亮 | `world-atlas` 110m 解析度下台灣面積過小可能不顯示 |
 | FRED iframe | 不加多餘 params，否則月頻指標顯示 sad face 錯誤 |
-| Yahoo Finance CORS | `query2.finance.yahoo.com` 在 browser 環境 CORS 受限，MarketOverviewPanel 已有 fallback |
-| ITIS 台灣新聞 | CORS-restricted HTML-only，前端無法直接 fetch，需後端 proxy |
-| 旅遊照片 | 目前為 `URL.createObjectURL`（session-only），後端上線前無法持久化 |
-| mockLogin | 預設帳密 `admin@daniellife.com` / `changeme`；`.env.local` 可覆蓋 |
+| Yahoo Finance CORS | Browser 環境受限，MarketOverviewPanel 已有 fallback mock |
+| ITIS 台灣新聞 | CORS-restricted HTML-only，需後端 proxy |
+| `noUncheckedIndexedAccess` | `tsconfig.app.json` 有、`tsconfig.json` 無（tsc --noEmit 不報錯）|

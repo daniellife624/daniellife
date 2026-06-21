@@ -1,23 +1,13 @@
 <template>
   <div class="admin">
 
-    <!-- Sidebar -->
-    <aside class="admin__sidebar">
-      <p class="admin__sidebar-title">資料管理</p>
-      <button
-        v-for="sec in sections"
-        :key="sec.key"
-        class="admin__sidebar-item"
-        :class="{ 'admin__sidebar-item--active': current === sec.key }"
-        @click="current = sec.key"
-      >
-        {{ sec.label }}
-      </button>
-      <div class="admin__sidebar-divider"></div>
-      <button class="admin__logout" @click="logout">登出</button>
-    </aside>
+    <AdminSidebar
+      :sections="sections"
+      :current-section="current"
+      @select="current = $event as SectionKey"
+      @logout="logout"
+    />
 
-    <!-- Main Content -->
     <main class="admin__main">
 
       <AdminTable
@@ -154,42 +144,25 @@
 
     </main>
 
-    <!-- Edit / Add Modal -->
-    <Teleport to="body">
-      <div v-if="modalOpen" class="modal-backdrop" @click.self="modalOpen = false">
-        <div class="modal">
-          <button class="modal__close" @click="modalOpen = false">×</button>
-          <h3 class="modal__title">
-            {{ modalMode === 'add' ? '新增' : '編輯' }}：{{ currentSectionLabel }}
-          </h3>
-          <div class="modal__fields">
-            <label v-for="field in modalFields" :key="field.key" class="modal__label">
-              {{ field.label }}
-              <textarea
-                v-if="field.type === 'textarea'"
-                v-model="formData[field.key]"
-                class="modal__textarea"
-                rows="3"
-              ></textarea>
-              <input
-                v-else
-                v-model="formData[field.key]"
-                class="modal__input"
-                :type="field.type ?? 'text'"
-                :placeholder="field.placeholder ?? field.label"
-              />
-            </label>
-          </div>
-          <p v-if="saveError" class="modal__error">{{ saveError }}</p>
-          <div class="modal__actions">
-            <button class="modal__btn modal__btn--cancel" @click="modalOpen = false">取消</button>
-            <button class="modal__btn modal__btn--save" :disabled="saving" @click="saveModal">
-              {{ saving ? '儲存中…' : '儲存' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AdminModal
+      :open="modalOpen"
+      :mode="modalMode"
+      :section-label="currentSectionLabel"
+      :fields="modalFields"
+      :initial-form-data="modalInitialFormData"
+      :current="current"
+      :saving="saving"
+      :save-error="saveError"
+      :editing-photos="editingPhotos"
+      :editing-photo-url="editingPhotoUrl"
+      :photo-uploading="photoUploading"
+      @close="modalOpen = false"
+      @save="handleModalSave"
+      @upload-multi="uploadAdminPhoto"
+      @delete-multi="deleteAdminPhoto"
+      @upload-single-edit="handleUploadSingleEdit"
+      @delete-single-edit="handleDeleteSingleEdit"
+    />
 
   </div>
 </template>
@@ -199,8 +172,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AdminTable from '@/components/admin/AdminTable.vue'
+import AdminSidebar from '@/components/admin/AdminSidebar.vue'
+import AdminModal, { type FieldDef } from '@/components/admin/AdminModal.vue'
 import {
   getInternships, createInternship, updateInternship, deleteInternship,
+  uploadInternshipPhoto, deleteInternshipPhoto,
   getProjects,    createProject,    updateProject,    deleteProject,
   getAcademicMilestones, createAcademicMilestone, updateAcademicMilestone, deleteAcademicMilestone,
   getFuturePlans, createFuturePlan, updateFuturePlan, deleteFuturePlan,
@@ -210,9 +186,11 @@ import {
 import {
   getExperiences, createExperience, updateExperience, deleteExperience,
   getTravelEntries, createTravelEntry, updateTravelEntry, deleteTravelEntry,
+  uploadExperiencePhoto, deleteExperiencePhoto, uploadTravelPhoto, deleteTravelPhoto,
 } from '@/api/activities'
 import {
   getSocialActivities, createSocialActivity, updateSocialActivity, deleteSocialActivity,
+  uploadSocialPhoto, deleteSocialPhoto,
 } from '@/api/social'
 import {
   getLiteratureWorks, createLiteratureWork, updateLiteratureWork, deleteLiteratureWork,
@@ -225,7 +203,7 @@ import {
 } from '@/api/finance'
 import type { Internship, Project, AcademicMilestone, FuturePlan, LangCertAdmin, CertGroupAdmin } from '@/types/homepage'
 import type { Experience, TravelEntry } from '@/types/activities'
-import type { SocialActivity } from '@/types/social'
+import type { SocialActivity, SdgNumber } from '@/types/social'
 import type { LiteratureWork } from '@/types/literature'
 import type { ThesisPaper } from '@/types/thesis'
 import type { Holding } from '@/types/finance'
@@ -270,6 +248,11 @@ const langCerts        = ref<LangCertAdmin[]>([])
 const certGroups       = ref<CertGroupAdmin[]>([])
 const travelEntries    = ref<TravelEntry[]>([])
 
+// ── Edit-mode photo state (passed as props to AdminModal) ──
+const editingPhotos   = ref<string[]>([])
+const editingPhotoUrl = ref<string>('')
+const photoUploading  = ref(false)
+
 onMounted(async () => {
   ;[
     interns.value,
@@ -301,21 +284,20 @@ onMounted(async () => {
 })
 
 // ── Modal state ──
-const modalOpen = ref(false)
-const modalMode = ref<'add' | 'edit'>('add')
-const editId    = ref<number | null>(null)
-const formData  = ref<Record<string, string>>({})
-const saving    = ref(false)
-const saveError = ref('')
-
-type FieldDef = { key: string; label: string; type?: string; placeholder?: string }
+const modalOpen            = ref(false)
+const modalMode            = ref<'add' | 'edit'>('add')
+const editId               = ref<number | null>(null)
+const modalInitialFormData = ref<Record<string, string>>({})
+const saving               = ref(false)
+const saveError            = ref('')
 
 const fieldMap: Record<SectionKey, FieldDef[]> = {
   internships: [
     { key: 'company',      label: '公司' },
     { key: 'dept',         label: '部門' },
     { key: 'role',         label: '職稱' },
-    { key: 'period',       label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
+    { key: 'periodFrom',   label: '開始年月', placeholder: '例：2025/07' },
+    { key: 'periodTo',     label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
   ],
   projects: [
@@ -324,7 +306,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'techLabel',  label: '技術標籤', placeholder: '使用技術 / 使用軟體' },
     { key: 'tech',       label: '技術/工具' },
     { key: 'members',    label: '成員人數', type: 'number' },
-    { key: 'period',     label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
+    { key: 'periodFrom', label: '開始年月', placeholder: '例：2025/07' },
+    { key: 'periodTo',   label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
     { key: 'core',       label: '核心功能（20字）' },
     { key: 'githubUrl',  label: 'GitHub 連結（可空）' },
     { key: 'youtubeUrl', label: 'YouTube 連結（可空）' },
@@ -338,7 +321,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'type',         label: '類型', placeholder: 'leadership / club' },
     { key: 'title',        label: '標題' },
     { key: 'organization', label: '組織' },
-    { key: 'period',       label: '期間', placeholder: 'YYYY/MM – YYYY/MM' },
+    { key: 'periodFrom',   label: '開始年月', placeholder: '例：2025/07' },
+    { key: 'periodTo',     label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
   ],
   social: [
@@ -379,13 +363,14 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'dividend',    label: '股利', type: 'number' },
   ],
   academic: [
-    { key: 'school',    label: '學校' },
-    { key: 'major',     label: '科系' },
-    { key: 'period',    label: '期間', placeholder: '2021 – 2024' },
-    { key: 'gpa',       label: 'GPA', placeholder: '4.26/4.30' },
-    { key: 'rank',      label: '排名', placeholder: '3/71' },
-    { key: 'sortOrder', label: '顯示順序', type: 'number' },
-    { key: 'facts',     label: '重點事蹟（每行一條）', type: 'textarea' },
+    { key: 'school',     label: '學校' },
+    { key: 'major',      label: '科系' },
+    { key: 'periodFrom', label: '入學年份', placeholder: '例：2021' },
+    { key: 'periodTo',   label: '畢業年份（留空視為「至今」）', placeholder: '例：2025' },
+    { key: 'gpa',        label: 'GPA', placeholder: '4.26/4.30' },
+    { key: 'rank',       label: '排名', placeholder: '3/71' },
+    { key: 'sortOrder',  label: '顯示順序', type: 'number' },
+    { key: 'facts',      label: '重點事蹟（每行一條）', type: 'textarea' },
   ],
   futureplans: [
     { key: 'phase',     label: '階段', placeholder: 'short / mid-short / mid' },
@@ -420,12 +405,22 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
 
 const modalFields = computed<FieldDef[]>(() => fieldMap[current.value] ?? [])
 
+function parsePeriod(period: string): { from: string; to: string } {
+  const parts = period.split('–').map((p) => p.trim())
+  return { from: parts[0] || '', to: parts[1] || '' }
+}
+
+function replaceInList<T extends { id: number }>(list: T[], updated: T) {
+  const idx = list.findIndex((x) => x.id === updated.id)
+  if (idx !== -1) list[idx] = updated
+}
+
 // ── openAdd ──
 function openAdd() {
   modalMode.value = 'add'
   editId.value = null
   saveError.value = ''
-  formData.value = Object.fromEntries(fieldMap[current.value].map((f) => [f.key, '']))
+  modalInitialFormData.value = Object.fromEntries(fieldMap[current.value].map((f) => [f.key, '']))
   modalOpen.value = true
 }
 
@@ -438,16 +433,20 @@ function openEdit(id: number) {
 
   if (current.value === 'internships') {
     const item = interns.value.find((i) => i.id === id)!
+    const p = parsePeriod(item.period)
     Object.assign(fd, {
       company: item.company, dept: item.dept, role: item.role,
-      period: item.period, contribution: item.contribution,
+      periodFrom: p.from, periodTo: p.to, contribution: item.contribution,
     })
   } else if (current.value === 'projects') {
     const item = projects.value.find((p) => p.id === id)!
+    const period = parsePeriod(item.period)
     Object.assign(fd, {
       name: item.name, type: item.type,
       techLabel: item.techLabel, tech: item.tech,
-      members: String(item.members), period: item.period, core: item.core,
+      members: String(item.members),
+      periodFrom: period.from, periodTo: period.to,
+      core: item.core,
       githubUrl: item.githubUrl ?? '', youtubeUrl: item.youtubeUrl ?? '',
       createdAt: item.createdAt,
       starS: item.star.find((s) => s.label === 'S')?.text ?? '',
@@ -457,9 +456,10 @@ function openEdit(id: number) {
     })
   } else if (current.value === 'activities') {
     const item = experiences.value.find((e) => e.id === id)!
+    const p = parsePeriod(item.period)
     Object.assign(fd, {
       type: item.type, title: item.title, organization: item.organization,
-      period: item.period, contribution: item.contribution,
+      periodFrom: p.from, periodTo: p.to, contribution: item.contribution,
     })
   } else if (current.value === 'social') {
     const item = socialActivities.value.find((a) => a.id === id)!
@@ -493,8 +493,10 @@ function openEdit(id: number) {
     })
   } else if (current.value === 'academic') {
     const item = academics.value.find((a) => a.id === id)!
+    const p = parsePeriod(item.period)
     Object.assign(fd, {
-      school: item.school, major: item.major, period: item.period,
+      school: item.school, major: item.major,
+      periodFrom: p.from, periodTo: p.to,
       gpa: item.gpa, rank: item.rank,
       sortOrder: String(item.sortOrder ?? 0),
       facts: item.facts.join('\n'),
@@ -526,206 +528,442 @@ function openEdit(id: number) {
     })
   }
 
-  formData.value = fd
+  // populate edit-mode photo refs
+  editingPhotos.value = []
+  editingPhotoUrl.value = ''
+  if (current.value === 'activities') {
+    editingPhotos.value = [...(experiences.value.find((e) => e.id === id)?.photos ?? [])]
+  } else if (current.value === 'travel') {
+    editingPhotos.value = [...(travelEntries.value.find((t) => t.id === id)?.photos ?? [])]
+  } else if (current.value === 'social') {
+    editingPhotoUrl.value = socialActivities.value.find((a) => a.id === id)?.photoUrl ?? ''
+  } else if (current.value === 'internships') {
+    editingPhotoUrl.value = interns.value.find((i) => i.id === id)?.photoUrl ?? ''
+  }
+
+  modalInitialFormData.value = fd
   modalOpen.value = true
 }
 
+// ── validateForm ──
+function validateForm(fd: Record<string, string>): string {
+  const s = (k: string): string => fd[k] ?? ''
+  const MONTH = /^\d{4}\/(0[1-9]|1[0-2])$/
+  const MONTH_OR_JIUJIN = (v: string) => !v.trim() || v.trim() === '至今' || MONTH.test(v.trim())
+  const YEAR = /^\d{4}$/
+  const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
+  if (current.value === 'internships') {
+    if (!s('company').trim()) return '「公司」不可空白'
+    if (!s('dept').trim()) return '「部門」不可空白'
+    if (!s('role').trim()) return '「職稱」不可空白'
+    if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
+    if (!MONTH_OR_JIUJIN(s('periodTo'))) return '「結束年月」格式須為 YYYY/MM，或填「至今」，或留空'
+    if (!s('contribution').trim()) return '「主要貢獻」不可空白'
+  } else if (current.value === 'projects') {
+    if (!s('name').trim()) return '「名稱」不可空白'
+    if (!['code', 'uiux', 'finance'].includes(s('type'))) return '「類型」須為 code / uiux / finance'
+    if (!Number.isInteger(Number(s('members'))) || Number(s('members')) < 1) return '「成員人數」須為正整數'
+    if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
+    if (!MONTH_OR_JIUJIN(s('periodTo'))) return '「結束年月」格式須為 YYYY/MM，或填「至今」，或留空'
+    if (!s('core').trim()) return '「核心功能」不可空白'
+    if (s('createdAt') && !DATE.test(s('createdAt'))) return '「建立日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+  } else if (current.value === 'activities') {
+    if (!['leadership', 'club'].includes(s('type'))) return '「類型」須為 leadership 或 club'
+    if (!s('title').trim()) return '「標題」不可空白'
+    if (!s('organization').trim()) return '「組織」不可空白'
+    if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
+    if (!MONTH_OR_JIUJIN(s('periodTo'))) return '「結束年月」格式須為 YYYY/MM，或填「至今」，或留空'
+    if (!s('contribution').trim()) return '「主要貢獻」不可空白'
+  } else if (current.value === 'social') {
+    if (!s('name').trim()) return '「名稱」不可空白'
+    if (!s('organization').trim()) return '「組織」不可空白'
+    if (!['Environmental', 'Social', 'Governance'].includes(s('esgType')))
+      return '「ESG 類型」須為 Environmental / Social / Governance'
+    if (!DATE.test(s('periodFrom'))) return '「開始日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    if (s('periodTo') && !DATE.test(s('periodTo'))) return '「結束日期」格式須為 YYYY-MM-DD，或留空'
+  } else if (current.value === 'literature') {
+    if (!s('title').trim()) return '「標題」不可空白'
+    if (s('ageWritten') && (isNaN(Number(s('ageWritten'))) || Number(s('ageWritten')) < 1))
+      return '「撰寫年齡」須為正整數'
+  } else if (current.value === 'papers') {
+    if (!s('topic').trim()) return '「研究主題」不可空白'
+    if (!s('name').trim()) return '「論文名稱」不可空白'
+    if (!s('journal').trim()) return '「期刊」不可空白'
+    if (!s('authors').trim()) return '「作者」不可空白'
+    if (!YEAR.test(s('year'))) return '「年份」須為 4 位數字（例：2025）'
+  } else if (current.value === 'holdings') {
+    if (!s('symbol').trim()) return '「股票代碼」不可空白'
+    if (!s('name').trim()) return '「名稱」不可空白'
+    if (!['TWD', 'USD'].includes(s('currency'))) return '「幣別」須為 TWD 或 USD'
+    if (!s('broker').trim()) return '「券商」不可空白'
+    if (!Number.isFinite(Number(s('shares'))) || Number(s('shares')) <= 0) return '「股數」須為正數'
+    if (!Number.isFinite(Number(s('avgPrice'))) || Number(s('avgPrice')) <= 0) return '「均價」須為正數'
+    if (!Number.isFinite(Number(s('marketPrice'))) || Number(s('marketPrice')) <= 0) return '「市價」須為正數'
+  } else if (current.value === 'academic') {
+    if (!s('school').trim()) return '「學校」不可空白'
+    if (!s('major').trim()) return '「科系」不可空白'
+    if (!YEAR.test(s('periodFrom'))) return '「入學年份」須為 4 位數字（例：2021）'
+    if (s('periodTo') && !YEAR.test(s('periodTo')) && s('periodTo').trim() !== '至今')
+      return '「畢業年份」須為 4 位數字，或填「至今」，或留空'
+  } else if (current.value === 'futureplans') {
+    if (!['short', 'mid-short', 'mid'].includes(s('phase')))
+      return '「階段」須為 short / mid-short / mid'
+    if (!s('title').trim()) return '「標題」不可空白'
+    if (!s('subtitle').trim()) return '「副標題」不可空白'
+  } else if (current.value === 'langcerts') {
+    if (!['en', 'jp'].includes(s('lang'))) return '「語言」須為 en 或 jp'
+    if (!s('name').trim()) return '「名稱」不可空白'
+    if (!s('score').trim()) return '「成績」不可空白'
+    const pct = Number(s('pct'))
+    if (isNaN(pct) || pct < 0 || pct > 100) return '「進度百分比」須為 0 到 100 之間的數字'
+  } else if (current.value === 'certgroups') {
+    if (!['finance', 'it'].includes(s('domain'))) return '「領域」須為 finance 或 it'
+    if (!s('category').trim()) return '「類別」不可空白'
+    if (!s('items').trim()) return '「證照項目」至少要有一條'
+  } else if (current.value === 'travel') {
+    if (!s('country').trim()) return '「國家」不可空白'
+    if (!s('city').trim()) return '「城市」不可空白'
+    if (!['Asia', 'Europe', 'Americas', 'Africa', 'Australia'].includes(s('continent')))
+      return '「洲別」須為 Asia / Europe / Americas / Africa / Australia'
+    if (!DATE.test(s('visitedAt'))) return '「造訪日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+  }
+  return ''
+}
+
 // ── saveModal ──
-async function saveModal() {
+async function saveModal(
+  fd: Record<string, string>,
+  pendingMultiFiles: (File | null)[],
+  pendingSingleFile: File | null,
+) {
+  const validationError = validateForm(fd)
+  if (validationError) { saveError.value = validationError; return }
+
   saving.value = true
   saveError.value = ''
-  const fd = formData.value
+  const s = (k: string): string => fd[k] ?? ''
   const isEdit = modalMode.value === 'edit'
+  const buildPeriod = (from: string, to: string) => `${from.trim()} – ${to.trim() || '至今'}`
 
   try {
     if (current.value === 'internships') {
       const body = {
-        company: fd.company, dept: fd.dept, role: fd.role,
-        period: fd.period, contribution: fd.contribution,
-        photoUrl: fd.photoUrl || undefined,
+        company: s('company'), dept: s('dept'), role: s('role'),
+        period: buildPeriod(s('periodFrom'), s('periodTo')),
+        contribution: s('contribution'),
+        photoUrl: undefined as string | undefined,
       }
       if (isEdit) {
-        const updated = await updateInternship(editId.value!, body)
-        replaceInList(interns.value, updated)
+        replaceInList(interns.value, await updateInternship(editId.value!, body))
       } else {
-        interns.value.push(await createInternship(body))
+        let created = await createInternship(body)
+        if (pendingSingleFile) created = await uploadInternshipPhoto(created.id, pendingSingleFile)
+        interns.value.push(created)
       }
 
     } else if (current.value === 'projects') {
       const star = (['S', 'T', 'A', 'R'] as const)
-        .map((l) => ({ label: l, text: fd[`star${l}`] ?? '' }))
-        .filter((s) => s.text.trim())
+        .map((l) => ({ label: l, text: s(`star${l}`) }))
+        .filter((item) => item.text.trim())
       const body = {
-        name: fd.name, type: fd.type,
-        techLabel: fd.techLabel || '使用技術', tech: fd.tech,
-        members: Number(fd.members) || 1, period: fd.period, core: fd.core,
-        githubUrl: fd.githubUrl || undefined, youtubeUrl: fd.youtubeUrl || undefined,
-        star, createdAt: fd.createdAt,
+        name: s('name'), type: s('type') as Project['type'],
+        techLabel: s('techLabel') || '使用技術', tech: s('tech'),
+        members: Number(s('members')) || 1,
+        period: buildPeriod(s('periodFrom'), s('periodTo')),
+        core: s('core'),
+        githubUrl: s('githubUrl') || undefined, youtubeUrl: s('youtubeUrl') || undefined,
+        star, createdAt: s('createdAt'),
       }
       if (isEdit) {
-        const updated = await updateProject(editId.value!, body)
-        replaceInList(projects.value, updated)
+        replaceInList(projects.value, await updateProject(editId.value!, body))
       } else {
         projects.value.push(await createProject(body))
       }
 
     } else if (current.value === 'activities') {
       const body = {
-        type: fd.type as 'leadership' | 'club',
-        title: fd.title, organization: fd.organization,
-        period: fd.period, contribution: fd.contribution,
-        photos: [],
+        type: s('type') as 'leadership' | 'club',
+        title: s('title'), organization: s('organization'),
+        period: buildPeriod(s('periodFrom'), s('periodTo')),
+        contribution: s('contribution'),
+        photos: [] as string[],
       }
       if (isEdit) {
-        const updated = await updateExperience(editId.value!, body)
-        replaceInList(experiences.value, updated)
+        replaceInList(experiences.value, await updateExperience(editId.value!, body))
       } else {
-        experiences.value.push(await createExperience(body))
+        let created = await createExperience(body)
+        for (const file of pendingMultiFiles) {
+          if (file) created = await uploadExperiencePhoto(created.id, file)
+        }
+        experiences.value.push(created)
       }
 
     } else if (current.value === 'social') {
-      const sdgNumbers = fd.sdgNumbers
-        .split(',').map((n) => parseInt(n.trim())).filter((n) => !isNaN(n) && n >= 1 && n <= 17)
+      const sdgNumbers = s('sdgNumbers')
+        .split(',').map((n) => parseInt(n.trim()))
+        .filter((n): n is SdgNumber => !isNaN(n) && n >= 1 && n <= 17)
       const body = {
-        name: fd.name, organization: fd.organization,
-        esgType: fd.esgType as SocialActivity['esgType'],
+        name: s('name'), organization: s('organization'),
+        esgType: s('esgType') as SocialActivity['esgType'],
         sdgNumbers,
-        periodFrom: fd.periodFrom, periodTo: fd.periodTo || undefined,
-        contribution: fd.contribution, reflection: fd.reflection,
+        periodFrom: s('periodFrom'), periodTo: s('periodTo') || undefined,
+        contribution: s('contribution'), reflection: s('reflection'),
       }
       if (isEdit) {
-        const updated = await updateSocialActivity(editId.value!, body)
-        replaceInList(socialActivities.value, updated)
+        replaceInList(socialActivities.value, await updateSocialActivity(editId.value!, body))
       } else {
-        socialActivities.value.push(await createSocialActivity(body))
+        let created = await createSocialActivity(body)
+        if (pendingSingleFile) created = await uploadSocialPhoto(created.id, pendingSingleFile)
+        socialActivities.value.push(created)
       }
 
     } else if (current.value === 'literature') {
       const body = {
-        title: fd.title,
-        ageWritten: fd.ageWritten ? Number(fd.ageWritten) : undefined,
-        period: fd.period || undefined,
-        awards: fd.awards, summary: fd.summary,
-        fullText: fd.fullText || undefined,
+        title: s('title'),
+        ageWritten: s('ageWritten') ? Number(s('ageWritten')) : undefined,
+        period: s('period') || undefined,
+        awards: s('awards'), summary: s('summary'),
+        fullText: s('fullText') || undefined,
       }
       if (isEdit) {
-        const updated = await updateLiteratureWork(editId.value!, body)
-        replaceInList(literatureWorks.value, updated)
+        replaceInList(literatureWorks.value, await updateLiteratureWork(editId.value!, body))
       } else {
         literatureWorks.value.push(await createLiteratureWork(body))
       }
 
     } else if (current.value === 'papers') {
       const body = {
-        topic: fd.topic, name: fd.name, journal: fd.journal,
-        authors: fd.authors, year: Number(fd.year) || new Date().getFullYear(),
-        purpose: fd.purpose, contribution: fd.contribution,
+        topic: s('topic'), name: s('name'), journal: s('journal'),
+        authors: s('authors'), year: Number(s('year')) || new Date().getFullYear(),
+        purpose: s('purpose'), contribution: s('contribution'),
       }
       if (isEdit) {
-        const updated = await updateThesisPaper(editId.value!, body)
-        replaceInList(papers.value, updated)
+        replaceInList(papers.value, await updateThesisPaper(editId.value!, body))
       } else {
         papers.value.push(await createThesisPaper(body))
       }
 
     } else if (current.value === 'holdings') {
       const body = {
-        symbol: fd.symbol, name: fd.name,
-        currency: fd.currency as Holding['currency'],
-        broker: fd.broker,
-        shares: Number(fd.shares), avgPrice: Number(fd.avgPrice),
-        marketPrice: Number(fd.marketPrice), dividend: Number(fd.dividend) || 0,
+        symbol: s('symbol'), name: s('name'),
+        currency: s('currency') as Holding['currency'],
+        broker: s('broker'),
+        shares: Number(s('shares')), avgPrice: Number(s('avgPrice')),
+        marketPrice: Number(s('marketPrice')), dividend: Number(s('dividend')) || 0,
       }
       if (isEdit) {
-        const updated = await updateHolding(editId.value!, body)
-        replaceInList(holdings.value, updated)
+        replaceInList(holdings.value, await updateHolding(editId.value!, body))
       } else {
         holdings.value.push(await createHolding(body))
       }
 
     } else if (current.value === 'academic') {
       const body = {
-        school: fd.school, major: fd.major, period: fd.period,
-        gpa: fd.gpa, rank: fd.rank,
-        facts: fd.facts.split('\n').map((s) => s.trim()).filter(Boolean),
-        sortOrder: Number(fd.sortOrder) || 0,
+        school: s('school'), major: s('major'),
+        period: buildPeriod(s('periodFrom'), s('periodTo')),
+        gpa: s('gpa'), rank: s('rank'),
+        facts: s('facts').split('\n').map((f) => f.trim()).filter(Boolean),
+        sortOrder: Number(s('sortOrder')) || 0,
       }
       if (isEdit) {
-        const updated = await updateAcademicMilestone(editId.value!, body)
-        replaceInList(academics.value, updated)
+        replaceInList(academics.value, await updateAcademicMilestone(editId.value!, body))
       } else {
         academics.value.push(await createAcademicMilestone(body))
       }
 
     } else if (current.value === 'futureplans') {
       const body = {
-        phase: fd.phase as FuturePlan['phase'],
-        title: fd.title, subtitle: fd.subtitle,
-        items: fd.items.split('\n').map((s) => s.trim()).filter(Boolean),
-        sortOrder: Number(fd.sortOrder) || 0,
+        phase: s('phase') as FuturePlan['phase'],
+        title: s('title'), subtitle: s('subtitle'),
+        items: s('items').split('\n').map((f) => f.trim()).filter(Boolean),
+        sortOrder: Number(s('sortOrder')) || 0,
       }
       if (isEdit) {
-        const updated = await updateFuturePlan(editId.value!, body)
-        replaceInList(futurePlans.value, updated)
+        replaceInList(futurePlans.value, await updateFuturePlan(editId.value!, body))
       } else {
         futurePlans.value.push(await createFuturePlan(body))
       }
 
     } else if (current.value === 'langcerts') {
       const body = {
-        lang: fd.lang as LangCertAdmin['lang'],
-        name: fd.name, score: fd.score, pct: Number(fd.pct) || 0,
+        lang: s('lang') as LangCertAdmin['lang'],
+        name: s('name'), score: s('score'), pct: Number(s('pct')) || 0,
       }
       if (isEdit) {
-        const updated = await updateLangCert(editId.value!, body)
-        replaceInList(langCerts.value, updated)
+        replaceInList(langCerts.value, await updateLangCert(editId.value!, body))
       } else {
         langCerts.value.push(await createLangCert(body))
       }
 
     } else if (current.value === 'certgroups') {
       const body = {
-        domain: fd.domain as CertGroupAdmin['domain'],
-        category: fd.category,
-        items: fd.items.split('\n').map((s) => s.trim()).filter(Boolean),
-        sortOrder: Number(fd.sortOrder) || 0,
+        domain: s('domain') as CertGroupAdmin['domain'],
+        category: s('category'),
+        items: s('items').split('\n').map((f) => f.trim()).filter(Boolean),
+        sortOrder: Number(s('sortOrder')) || 0,
       }
       if (isEdit) {
-        const updated = await updateCertGroup(editId.value!, body)
-        replaceInList(certGroups.value, updated)
+        replaceInList(certGroups.value, await updateCertGroup(editId.value!, body))
       } else {
         certGroups.value.push(await createCertGroup(body))
       }
 
     } else if (current.value === 'travel') {
       const body = {
-        country: fd.country, city: fd.city, continent: fd.continent,
-        visitedAt: fd.visitedAt,
-        companions: fd.companions || undefined,
-        activities: fd.activities || undefined,
-        purchases: fd.purchases || undefined,
-        journal: fd.journal || undefined,
-        photos: [],
+        country: s('country'), city: s('city'), continent: s('continent'),
+        visitedAt: s('visitedAt'),
+        companions: s('companions') || undefined,
+        activities: s('activities') || undefined,
+        purchases: s('purchases') || undefined,
+        journal: s('journal') || undefined,
+        photos: [] as string[],
       }
       if (isEdit) {
-        const updated = await updateTravelEntry(editId.value!, body)
-        replaceInList(travelEntries.value, updated)
+        replaceInList(travelEntries.value, await updateTravelEntry(editId.value!, body))
       } else {
-        travelEntries.value.push(await createTravelEntry(body))
+        let created = await createTravelEntry(body)
+        for (const file of pendingMultiFiles) {
+          if (file) created = await uploadTravelPhoto(created.id, file)
+        }
+        travelEntries.value.push(created)
       }
     }
 
     modalOpen.value = false
-  } catch {
-    saveError.value = '儲存失敗，請確認欄位格式是否正確'
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '儲存失敗，請再試一次'
   } finally {
     saving.value = false
   }
 }
 
-function replaceInList<T extends { id: number }>(list: T[], updated: T) {
-  const idx = list.findIndex((x) => x.id === updated.id)
-  if (idx !== -1) list[idx] = updated
+// ── handleModalSave (receives data emitted from AdminModal) ──
+async function handleModalSave(data: {
+  formData: Record<string, string>
+  pendingMultiFiles: (File | null)[]
+  pendingSingleFile: File | null
+}) {
+  await saveModal(data.formData, data.pendingMultiFiles, data.pendingSingleFile)
+}
+
+// ── Edit-mode photo management ──
+async function uploadAdminPhoto(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || editId.value === null) return
+  ;(e.target as HTMLInputElement).value = ''
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    if (current.value === 'activities') {
+      const updated = await uploadExperiencePhoto(editId.value, file)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(experiences.value, updated)
+    } else if (current.value === 'travel') {
+      const updated = await uploadTravelPhoto(editId.value, file)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(travelEntries.value, updated)
+    }
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '上傳失敗'
+  } finally {
+    photoUploading.value = false
+  }
+}
+
+async function deleteAdminPhoto(url: string) {
+  if (editId.value === null) return
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    if (current.value === 'activities') {
+      const updated = await deleteExperiencePhoto(editId.value, url)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(experiences.value, updated)
+    } else if (current.value === 'travel') {
+      const updated = await deleteTravelPhoto(editId.value, url)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(travelEntries.value, updated)
+    }
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '刪除失敗'
+  } finally {
+    photoUploading.value = false
+  }
+}
+
+function handleUploadSingleEdit(e: Event) {
+  if (current.value === 'social') uploadAdminSocialPhoto(e)
+  else if (current.value === 'internships') uploadAdminInternPhoto(e)
+}
+
+function handleDeleteSingleEdit() {
+  if (current.value === 'social') deleteAdminSocialPhoto()
+  else if (current.value === 'internships') deleteAdminInternPhoto()
+}
+
+async function uploadAdminSocialPhoto(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || editId.value === null) return
+  ;(e.target as HTMLInputElement).value = ''
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    const updated = await uploadSocialPhoto(editId.value, file)
+    editingPhotoUrl.value = updated.photoUrl ?? ''
+    replaceInList(socialActivities.value, updated)
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '上傳失敗'
+  } finally {
+    photoUploading.value = false
+  }
+}
+
+async function deleteAdminSocialPhoto() {
+  if (editId.value === null) return
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    const updated = await deleteSocialPhoto(editId.value)
+    editingPhotoUrl.value = ''
+    replaceInList(socialActivities.value, updated)
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '刪除失敗'
+  } finally {
+    photoUploading.value = false
+  }
+}
+
+async function uploadAdminInternPhoto(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || editId.value === null) return
+  ;(e.target as HTMLInputElement).value = ''
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    const updated = await uploadInternshipPhoto(editId.value, file)
+    editingPhotoUrl.value = updated.photoUrl ?? ''
+    replaceInList(interns.value, updated)
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '上傳失敗'
+  } finally {
+    photoUploading.value = false
+  }
+}
+
+async function deleteAdminInternPhoto() {
+  if (editId.value === null) return
+  photoUploading.value = true
+  saveError.value = ''
+  try {
+    const updated = await deleteInternshipPhoto(editId.value)
+    editingPhotoUrl.value = ''
+    replaceInList(interns.value, updated)
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '刪除失敗'
+  } finally {
+    photoUploading.value = false
+  }
 }
 
 // ── deleteItem ──
@@ -774,171 +1012,10 @@ function logout() {
   min-height: 100vh;
 }
 
-/* ── Sidebar ── */
-.admin__sidebar {
-  flex-shrink: 0;
-  width: 200px;
-  background: var(--color-ink-1);
-  padding: var(--space-6) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  position: sticky;
-  top: var(--navbar-height);
-  height: calc(100vh - var(--navbar-height));
-  overflow-y: auto;
-}
-
-.admin__sidebar-title {
-  font-family: var(--font-cjk);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-ink-3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
-.admin__sidebar-item {
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: none;
-  border: none;
-  font-family: var(--font-cjk);
-  font-size: 14px;
-  color: var(--color-ink-3);
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s, color 0.15s;
-}
-
-.admin__sidebar-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
-.admin__sidebar-item--active { background: var(--color-primary); color: var(--color-ink-1); font-weight: 700; }
-
-.admin__sidebar-divider {
-  height: 1px;
-  background: rgba(255,255,255,0.1);
-  margin: var(--space-4) 0;
-}
-
-.admin__logout {
-  padding: var(--space-2) var(--space-3);
-  background: none;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-cjk);
-  font-size: 13px;
-  color: var(--color-ink-3);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.2s, color 0.2s;
-  margin-top: auto;
-}
-.admin__logout:hover { border-color: #dc2626; color: #dc2626; }
-
-/* ── Main ── */
 .admin__main {
   flex: 1;
   padding: var(--space-7) var(--space-6);
   background: #f7f7f5;
   overflow-y: auto;
 }
-
-/* ── Modal ── */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--color-white);
-  border-radius: var(--radius-md);
-  padding: var(--space-6);
-  width: 560px;
-  max-width: 92vw;
-  max-height: 88vh;
-  overflow-y: auto;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.modal__close {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  font-size: 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-ink-3);
-}
-
-.modal__title {
-  font-family: var(--font-cjk);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-ink-1);
-}
-
-.modal__fields { display: flex; flex-direction: column; gap: var(--space-3); }
-
-.modal__label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-family: var(--font-cjk);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-ink-2);
-}
-
-.modal__input,
-.modal__textarea {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-ink-4);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-cjk);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-  width: 100%;
-  box-sizing: border-box;
-}
-.modal__input:focus,
-.modal__textarea:focus { border-color: var(--color-primary); }
-.modal__textarea { resize: vertical; }
-
-.modal__error {
-  font-family: var(--font-cjk);
-  font-size: 13px;
-  color: #dc2626;
-  background: #fef2f2;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-}
-
-.modal__actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
-
-.modal__btn {
-  padding: var(--space-2) var(--space-5);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-cjk);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.modal__btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.modal__btn:not(:disabled):hover { opacity: 0.82; }
-.modal__btn--cancel { background: var(--color-ink-4); color: var(--color-ink-1); }
-.modal__btn--save   { background: var(--color-primary); color: var(--color-ink-1); }
 </style>

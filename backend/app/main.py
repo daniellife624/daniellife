@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .database import Base, engine
 from .routers import auth, homepage, activities, social, literature, finance, thesis, market
@@ -36,6 +38,11 @@ app.include_router(literature.router, prefix="/api")
 app.include_router(finance.router,    prefix="/api")
 app.include_router(thesis.router,     prefix="/api")
 app.include_router(market.router,     prefix="/api")
+
+
+_uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+_uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 
 @app.get("/api/health")

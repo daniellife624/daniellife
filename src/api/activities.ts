@@ -1,5 +1,41 @@
 import type { Experience, TravelEntry, Continent } from '@/types/activities'
-import { apiFetch } from './client'
+import { apiFetch, getToken } from './client'
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+export async function uploadExperiencePhoto(id: number, file: File): Promise<Experience> {
+  const form = new FormData()
+  form.append('file', file)
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}/api/activities/experiences/${id}/photo`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
+}
+
+export async function deleteExperiencePhoto(id: number, url: string): Promise<Experience> {
+  return apiFetch<Experience>(`/api/activities/experiences/${id}/photo?url=${encodeURIComponent(url)}`, { method: 'DELETE' })
+}
+
+export async function deleteTravelPhoto(id: number, url: string): Promise<TravelEntry> {
+  return apiFetch<TravelEntry>(`/api/activities/travel/${id}/photo?url=${encodeURIComponent(url)}`, { method: 'DELETE' })
+}
+
+export async function uploadTravelPhoto(id: number, file: File): Promise<TravelEntry> {
+  const form = new FormData()
+  form.append('file', file)
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}/api/activities/travel/${id}/photo`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
+}
 
 export async function getExperiences(): Promise<Experience[]> {
   return apiFetch<Experience[]>('/api/activities/experiences')

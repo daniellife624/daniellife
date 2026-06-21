@@ -1,11 +1,18 @@
 import json
+import uuid
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models.social import SocialActivity
 from ..schemas.social import SocialActivityOut, SocialActivityIn
+
+UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "social"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_SIZE_MB = 10
 
 router = APIRouter(prefix="/social", tags=["social"])
 
@@ -78,3 +85,48 @@ def delete_social(item_id: int, db: Session = Depends(get_db), _=Depends(get_cur
     if not obj:
         raise HTTPException(404, "Not found")
     db.delete(obj); db.commit()
+
+
+@router.post("/{item_id}/photo", response_model=SocialActivityOut)
+async def upload_social_photo(
+    item_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, f"不支援的檔案類型：{file.content_type}")
+    content = await file.read()
+    if len(content) > MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(400, f"檔案大小超過 {MAX_SIZE_MB}MB 限制")
+    ext = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
+    filename = f"{item_id}_{uuid.uuid4().hex[:8]}{ext}"
+    (UPLOAD_DIR / filename).write_bytes(content)
+    if obj.photo_url:
+        old = UPLOAD_DIR / Path(obj.photo_url).name
+        if old.exists():
+            old.unlink()
+    obj.photo_url = f"/uploads/social/{filename}"
+    db.commit(); db.refresh(obj)
+    return _to_out(obj)
+
+
+@router.delete("/{item_id}/photo", response_model=SocialActivityOut)
+def delete_social_photo(
+    item_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    if obj.photo_url:
+        target = UPLOAD_DIR / Path(obj.photo_url).name
+        if target.exists():
+            target.unlink()
+    obj.photo_url = None
+    db.commit(); db.refresh(obj)
+    return _to_out(obj)

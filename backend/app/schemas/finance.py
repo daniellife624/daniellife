@@ -1,5 +1,7 @@
-from pydantic import BaseModel, computed_field
-from datetime import date
+from pydantic import BaseModel, computed_field, field_validator
+
+
+_CURRENCIES = {'TWD', 'USD'}
 
 
 class HoldingOut(BaseModel):
@@ -42,6 +44,27 @@ class HoldingIn(BaseModel):
     avgPrice: float
     marketPrice: float
     dividend: float = 0.0
+
+    @field_validator('symbol', 'name', 'broker')
+    @classmethod
+    def not_empty(cls, v: str, info) -> str:
+        if not v.strip():
+            raise ValueError(f'「{info.field_name}」不可空白')
+        return v
+
+    @field_validator('currency')
+    @classmethod
+    def currency_choices(cls, v: str) -> str:
+        if v not in _CURRENCIES:
+            raise ValueError('「幣別」須為 TWD 或 USD')
+        return v
+
+    @field_validator('shares', 'avgPrice', 'marketPrice')
+    @classmethod
+    def positive(cls, v: float, info) -> float:
+        if v <= 0:
+            raise ValueError(f'「{info.field_name}」須為正數')
+        return v
 
 
 class PortfolioSummary(BaseModel):

@@ -1,11 +1,18 @@
 import json
+import uuid
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import homepage as m
 from ..schemas import homepage as s
+
+INTERN_UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "internships"
+INTERN_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_SIZE_MB = 10
 
 router = APIRouter(prefix="/homepage", tags=["homepage"])
 
@@ -96,6 +103,51 @@ def delete_internship(item_id: int, db: Session = Depends(get_db), _=Depends(get
     if not obj:
         raise HTTPException(404, "Not found")
     db.delete(obj); db.commit()
+
+
+@router.post("/internships/{item_id}/photo", response_model=s.InternshipOut)
+async def upload_internship_photo(
+    item_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, f"不支援的檔案類型：{file.content_type}")
+    content = await file.read()
+    if len(content) > MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(400, f"檔案大小超過 {MAX_SIZE_MB}MB 限制")
+    ext = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
+    filename = f"{item_id}_{uuid.uuid4().hex[:8]}{ext}"
+    (INTERN_UPLOAD_DIR / filename).write_bytes(content)
+    if obj.photo_url:
+        old = INTERN_UPLOAD_DIR / Path(obj.photo_url).name
+        if old.exists():
+            old.unlink()
+    obj.photo_url = f"/uploads/internships/{filename}"
+    db.commit(); db.refresh(obj)
+    return _intern_out(obj)
+
+
+@router.delete("/internships/{item_id}/photo", response_model=s.InternshipOut)
+def delete_internship_photo(
+    item_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    if obj.photo_url:
+        target = INTERN_UPLOAD_DIR / Path(obj.photo_url).name
+        if target.exists():
+            target.unlink()
+    obj.photo_url = None
+    db.commit(); db.refresh(obj)
+    return _intern_out(obj)
 
 
 # ── Projects ─────────────────────────────────────────────────────
