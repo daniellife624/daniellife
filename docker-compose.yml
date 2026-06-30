@@ -1,0 +1,46 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: daniellife
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/daniellife
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 10080
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_MODELS_MODEL: ${GITHUB_MODELS_MODEL:-gpt-4o}
+      ITIS_BASE_URL: https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:
+  uploads_data:

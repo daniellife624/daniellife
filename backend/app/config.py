@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # ITIS proxy
     ITIS_BASE_URL: str = "https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp"
 
+    # GitHub Models (OpenAI-compatible inference)
+    GITHUB_TOKEN: str = ""
+    GITHUB_MODELS_MODEL: str = "gpt-4o"
+
     # Frontend origin (CORS)
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 

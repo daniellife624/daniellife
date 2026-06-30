@@ -1,4 +1,4 @@
-import type { NewsItem, NewsRegion } from '@/types/market'
+import type { NewsItem, NewsRegion, ChatMessage } from '@/types/market'
 import { apiFetch } from './client'
 
 // ── Guardian API (free test key) ──
@@ -63,6 +63,14 @@ const _mockUS: NewsItem[] = [
   { id: 4, title: 'News Title', summary: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', source: 'BBC',   publishedAt: '2026/06/15 13:00', region: 'US' },
   { id: 5, title: 'News Title', summary: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', source: 'BBC',   publishedAt: '2026/06/15 13:00', region: 'US' },
 ]
+
+export async function sendChatMessage(messages: ChatMessage[]): Promise<string> {
+  const data = await apiFetch<{ reply: string }>('/api/market/chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
+  })
+  return data.reply
+}
 
 export async function getNews(
   region: NewsRegion,

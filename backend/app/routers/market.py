@@ -4,6 +4,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 from bs4 import BeautifulSoup
+from pydantic import BaseModel
 from ..config import settings
 
 router = APIRouter(prefix="/market", tags=["market"])
@@ -191,3 +192,56 @@ def _extract_summary(tag, title: str) -> str:
             if 10 < len(extra) < 300:
                 return extra
     return ""
+
+
+# ── AI Chat ──────────────────────────────────────────────────────────────────
+
+GITHUB_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
+
+_SYSTEM_PROMPT = (
+    "你是「Daniellife 會計丹尼」個人網站的財經分析助手，"
+    "幫助訪客理解財經市場動態、總體經濟新聞與投資概念。"
+    "請用繁體中文簡潔清晰地回覆，重點以條列呈現。"
+)
+
+
+class _ChatMsg(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[_ChatMsg]
+
+
+@router.post("/chat")
+async def chat(body: ChatRequest):
+    if not settings.GITHUB_TOKEN:
+        raise HTTPException(503, "AI 功能尚未設定（缺少 GITHUB_TOKEN）")
+
+    payload = {
+        "model": settings.GITHUB_MODELS_MODEL,
+        "messages": [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            *[m.model_dump() for m in body.messages],
+        ],
+        "max_tokens": 800,
+        "temperature": 0.7,
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            res = await client.post(GITHUB_MODELS_URL, json=payload, headers=headers)
+            res.raise_for_status()
+            reply: str = res.json()["choices"][0]["message"]["content"]
+            return {"reply": reply}
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(502, f"GitHub Models 回應錯誤 {e.response.status_code}")
+        except httpx.TimeoutException:
+            raise HTTPException(504, "AI 請求逾時，請稍後再試")
+        except Exception as e:
+            raise HTTPException(502, f"AI 請求失敗：{e}")

@@ -1,6 +1,6 @@
 # Daniellife 個人網站 — 專案全覽
 
-> 最後更新：2026-06-21（論文 seed 匯入 + Kanban 拖曳修正 + PapersTable 介面清理）
+> 最後更新：2026-06-30（GitHub Models AI 聊天室串接 + Docker 部署設定）
 
 ---
 
@@ -25,7 +25,7 @@
 | 資料庫 | MySQL（XAMPP MariaDB 相容）|
 | 認證 | **Google OAuth (GSI)** → 後端驗證 → JWT（python-jose） |
 | 檔案上傳 | python-multipart；圖片存 `backend/uploads/{section}/`；`/uploads` StaticFiles 掛載 |
-| AI 整合（待串接） | GitHub Models（GPT-4o）|
+| AI 整合 | GitHub Models（`gpt-4o`，OpenAI-compatible，`POST /api/market/chat`）|
 
 ### npm 套件（非標準 Vite 預設）
 
@@ -124,7 +124,7 @@ src/
 │   ├── news/
 │   │   ├── NewsCard.vue          # 新聞卡片（標題 + 摘要 + source badge，<a> 連結）
 │   │   ├── NewsList.vue          # 新聞列表（搜尋 + 地區 Tab + 分頁，自取資料）
-│   │   └── ChatPanel.vue         # AI 聊天室 UI（待串接 GitHub Models GPT-4o）
+│   │   └── ChatPanel.vue         # AI 聊天室（GitHub Models gpt-4o，打字動畫 + loading 狀態）
 │   ├── market/
 │   │   ├── MarketOverviewPanel.vue  # 大盤總覽（TW/US，fallback mock SVG）
 │   │   ├── ForexSection.vue         # TradingView 外匯小工具（USD/JPY/EUR → TWD）
@@ -435,7 +435,7 @@ NewsView 純組合（無自身 data state）。
 |------|------|
 | `NewsList` | 搜尋 + US/TAIWAN Tab + 分頁（PAGE_SIZE=5）；owns region / keyword / page / items；Guardian API（key=`test`）；TAIWAN tab 有黃色 ⚠ banner |
 | `NewsCard` | `<a>` 連結卡；標題 + 摘要（2-line clamp）+ source badge |
-| `ChatPanel` | AI 聊天室 UI；owns messages / chatInput；TODO 串接 GitHub Models |
+| `ChatPanel` | AI 聊天室；owns messages / chatInput / loading；呼叫 `POST /api/market/chat`（GitHub Models gpt-4o）；打字動畫泡泡 |
 
 ---
 
@@ -544,6 +544,8 @@ ThesisView 純組合（無自身 data state）。
 | `ADMIN_EMAIL` | `r14722016@g.ntu.edu.tw`（唯一管理員）|
 | `FRONTEND_ORIGIN` | `http://localhost:5173` |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `GITHUB_TOKEN` | GitHub PAT（`models:read` scope）→ GitHub Models 推論 |
+| `GITHUB_MODELS_MODEL` | 預設 `gpt-4o`（可改為其他 GitHub Models 支援的模型）|
 
 ---
 
@@ -588,11 +590,22 @@ ThesisView 純組合（無自身 data state）。
 - [x] 期間欄位拆分（periodFrom + periodTo）
 - [x] AdminView 拆分為 AdminSidebar + AdminModal 元件
 
+**AI 聊天 + 新聞**
+- [x] `POST /api/market/chat`：GitHub Models gpt-4o，system prompt 財經助手，`GITHUB_TOKEN` 存 env
+- [x] `ChatPanel.vue`：loading 打字動畫泡泡、disabled 狀態、`white-space: pre-wrap`（換行支援）
+- [x] ITIS 台灣新聞 proxy：`GET /api/market/news?region=TAIWAN`，1hr 快取，BeautifulSoup 解析，研討會過濾
+- [x] `sendChatMessage` API function（`src/api/market.ts`）
+
+**部署**
+- [x] `backend/Dockerfile`：python:3.12-slim + uvicorn
+- [x] root `Dockerfile`：Node 20 build → nginx:alpine SPA
+- [x] `docker-compose.yml`：db（mysql:8.0）+ backend + frontend，健康檢查 + volume
+- [x] `nginx.conf`：`/api/*` + `/uploads/*` proxy to backend，SPA fallback
+- [x] `requirements.txt` 補上 `python-multipart`
+
 ### ⏳ 待開發
 
-- [ ] NewsView AI 聊天室串接 GitHub Models（GPT-4o）
-- [ ] ITIS HTML proxy（`GET /api/news/taiwan?date=YYYY-M-D`）
-- [ ] Docker 部署設定
+（暫無待開發項目）
 
 ---
 
@@ -615,5 +628,7 @@ ThesisView 純組合（無自身 data state）。
 | 台灣地圖高亮 | `world-atlas` 110m 解析度下台灣面積過小可能不顯示 |
 | FRED iframe | 不加多餘 params，否則月頻指標顯示 sad face 錯誤 |
 | Yahoo Finance CORS | Browser 環境受限，MarketOverviewPanel 已有 fallback mock |
-| ITIS 台灣新聞 | CORS-restricted HTML-only，需後端 proxy |
+| ITIS 台灣新聞 | CORS-restricted HTML-only，需後端 proxy（已實作） |
+| GitHub Models 速率限制 | Copilot Free/Pro：15 req/min，150 req/day；公開頁面需自行評估使用量 |
+| Docker 部署環境變數 | `docker-compose.yml` 讀取 `.env`，需設定 `MYSQL_ROOT_PASSWORD` + `SECRET_KEY` + `GITHUB_TOKEN` 等 |
 | `noUncheckedIndexedAccess` | `tsconfig.app.json` 有、`tsconfig.json` 無（tsc --noEmit 不報錯）|
