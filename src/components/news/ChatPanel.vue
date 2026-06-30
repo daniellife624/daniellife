@@ -3,7 +3,7 @@
     <div class="chat-panel__header">
       <div class="chat-panel__brand">
         <span class="chat-panel__d">D</span>
-        <span class="chat-panel__title">Daniellife 會計丹尼</span>
+        <span class="chat-panel__title">會計丹尼</span>
       </div>
       <div class="chat-panel__model-wrap">
         <span class="chat-panel__provider">{{ providerLabel }}</span>
