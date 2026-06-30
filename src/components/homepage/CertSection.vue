@@ -96,11 +96,7 @@ onMounted(async () => {
 
   const observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) {
-        animateBars.value = true
-      } else {
-        animateBars.value = false
-      }
+      animateBars.value = entries[0]?.isIntersecting ?? false
     },
     { threshold: 0.3 },
   )

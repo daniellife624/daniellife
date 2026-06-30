@@ -129,7 +129,7 @@ function goStation(idx: number) {
 onMounted(() => {
   observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) startAnimation()
+      if (entries[0]?.isIntersecting) startAnimation()
       else resetTrainAnimation()
     },
     { threshold: 0.25 },

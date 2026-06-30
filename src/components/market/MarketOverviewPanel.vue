@@ -161,8 +161,9 @@ const selected  = ref(0)
 const usingMock = ref(false)
 const allData   = ref<Record<TabKey, Entry[]>>(JSON.parse(JSON.stringify(MOCK)))
 
+const _FALLBACK: Entry = { id: '', name: '', price: 0, change: 0, changePct: 0, open: 0, high: 0, low: 0, prev: 0, intraday: [] }
 const currentIndices = computed(() => allData.value[activeTab.value])
-const ai = computed(() => currentIndices.value[selected.value] ?? currentIndices.value[0])
+const ai = computed((): Entry => currentIndices.value[selected.value] ?? currentIndices.value[0] ?? _FALLBACK)
 
 function switchTab(key: TabKey) { activeTab.value = key; selected.value = 0 }
 
@@ -218,27 +219,27 @@ onMounted(async () => {
 
     allData.value = {
       TW: [
-        fromYF('^TWII', '上市', '成交額') ?? MOCK.TW[0],
-        fromYF('^TWO',  '上櫃')           ?? MOCK.TW[1],
-        MOCK.TW[2], MOCK.TW[3],
+        fromYF('^TWII', '上市', '成交額') ?? MOCK.TW[0]!,
+        fromYF('^TWO',  '上櫃')           ?? MOCK.TW[1]!,
+        MOCK.TW[2]!, MOCK.TW[3]!,
       ],
       ASIA: [
-        fromYF('^N225',     '日經指數') ?? MOCK.ASIA[0],
-        fromYF('^KS11',     '韓國綜合') ?? MOCK.ASIA[1],
-        fromYF('^HSI',      '香港恒生') ?? MOCK.ASIA[2],
-        fromYF('000001.SS', '上海綜合') ?? MOCK.ASIA[3],
+        fromYF('^N225',     '日經指數') ?? MOCK.ASIA[0]!,
+        fromYF('^KS11',     '韓國綜合') ?? MOCK.ASIA[1]!,
+        fromYF('^HSI',      '香港恒生') ?? MOCK.ASIA[2]!,
+        fromYF('000001.SS', '上海綜合') ?? MOCK.ASIA[3]!,
       ],
       EU: [
-        fromYF('^FTSE',     '英國富時')  ?? MOCK.EU[0],
-        fromYF('^GDAXI',    '德國DAX')   ?? MOCK.EU[1],
-        fromYF('^FCHI',     '法國CAC40') ?? MOCK.EU[2],
-        fromYF('^STOXX50E', '歐洲50')    ?? MOCK.EU[3],
+        fromYF('^FTSE',     '英國富時')  ?? MOCK.EU[0]!,
+        fromYF('^GDAXI',    '德國DAX')   ?? MOCK.EU[1]!,
+        fromYF('^FCHI',     '法國CAC40') ?? MOCK.EU[2]!,
+        fromYF('^STOXX50E', '歐洲50')    ?? MOCK.EU[3]!,
       ],
       US: [
-        fromYF('^GSPC', 'S&P 500')   ?? MOCK.US[0],
-        fromYF('^DJI',  '道瓊工業')  ?? MOCK.US[1],
-        fromYF('^IXIC', 'NASDAQ')    ?? MOCK.US[2],
-        fromYF('^RUT',  '羅素2000')  ?? MOCK.US[3],
+        fromYF('^GSPC', 'S&P 500')   ?? MOCK.US[0]!,
+        fromYF('^DJI',  '道瓊工業')  ?? MOCK.US[1]!,
+        fromYF('^IXIC', 'NASDAQ')    ?? MOCK.US[2]!,
+        fromYF('^RUT',  '羅素2000')  ?? MOCK.US[3]!,
       ],
     }
   } catch {

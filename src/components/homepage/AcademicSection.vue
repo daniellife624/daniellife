@@ -170,7 +170,7 @@ function startAnimation() {
 
 onMounted(async () => {
   const data = await getAcademicMilestones()
-  milestones.value = data.map((m, i) => ({ ...m, ...positions[i] }))
+  milestones.value = data.map((m, i) => ({ ...m, cx: positions[i]?.cx ?? 0, cy: positions[i]?.cy ?? 0 }))
 
   // Initialise path to hidden (getTotalLength available after mount)
   const path = pathEl.value
@@ -182,7 +182,7 @@ onMounted(async () => {
 
   observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) {
+      if (entries[0]?.isIntersecting) {
         startAnimation()
       } else {
         resetAnimation()

@@ -4,14 +4,14 @@
       <circle class="donut__track" cx="60" cy="60" r="46" />
       <circle
         class="donut__slice"
-        :style="{ stroke: slices[0].color }"
+        :style="{ stroke: slice0.color }"
         cx="60" cy="60" r="46"
         :stroke-dasharray="`${arc0} ${circumference - arc0}`"
         stroke-dashoffset="0"
       />
       <circle
         class="donut__slice"
-        :style="{ stroke: slices[1].color }"
+        :style="{ stroke: slice1.color }"
         cx="60" cy="60" r="46"
         :stroke-dasharray="`${arc1} ${circumference - arc1}`"
         :stroke-dashoffset="-(arc0)"
@@ -33,9 +33,12 @@ const props = defineProps<{
   slices: { label: string; pct: number; color: string }[]
 }>()
 
+const _empty = { label: '', pct: 0, color: '' }
 const circumference = 2 * Math.PI * 46
-const arc0 = computed(() => (props.slices[0].pct / 100) * circumference)
-const arc1 = computed(() => (props.slices[1].pct / 100) * circumference)
+const slice0 = computed(() => props.slices[0] ?? _empty)
+const slice1 = computed(() => props.slices[1] ?? _empty)
+const arc0 = computed(() => (slice0.value.pct / 100) * circumference)
+const arc1 = computed(() => (slice1.value.pct / 100) * circumference)
 </script>
 
 <style scoped>

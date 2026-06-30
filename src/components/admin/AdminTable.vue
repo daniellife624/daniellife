@@ -19,8 +19,8 @@
           <tr v-for="(row, i) in rows" :key="ids[i]" class="crud-row">
             <td v-for="(cell, j) in row" :key="j" class="crud-cell">{{ cell }}</td>
             <td class="crud-cell crud-cell--actions">
-              <button class="crud-btn crud-btn--edit" @click="$emit('edit', ids[i])">編輯</button>
-              <button class="crud-btn crud-btn--del"  @click="$emit('delete', ids[i])">刪除</button>
+              <button class="crud-btn crud-btn--edit" @click="$emit('edit', ids[i] ?? 0)">編輯</button>
+              <button class="crud-btn crud-btn--del"  @click="$emit('delete', ids[i] ?? 0)">刪除</button>
             </td>
           </tr>
         </tbody>
