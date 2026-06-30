@@ -17,7 +17,18 @@ class Settings(BaseSettings):
     # ITIS proxy
     ITIS_BASE_URL: str = "https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp"
 
-    # GitHub Models (OpenAI-compatible inference)
+    # AI Chat provider: "gemini" | "groq" | "github"
+    AI_PROVIDER: str = "gemini"
+
+    # Google Gemini (AI Studio) — gemini-2.0-flash, 1500 req/day free
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+
+    # Groq — llama-3.3-70b-versatile, 14400 req/day free
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
+    # GitHub Models — gpt-4o, 150 req/day free
     GITHUB_TOKEN: str = ""
     GITHUB_MODELS_MODEL: str = "gpt-4o"
 

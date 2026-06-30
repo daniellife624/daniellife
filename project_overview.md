@@ -544,8 +544,13 @@ ThesisView 純組合（無自身 data state）。
 | `ADMIN_EMAIL` | `r14722016@g.ntu.edu.tw`（唯一管理員）|
 | `FRONTEND_ORIGIN` | `http://localhost:5173` |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
-| `GITHUB_TOKEN` | GitHub PAT（`models:read` scope）→ GitHub Models 推論 |
-| `GITHUB_MODELS_MODEL` | 預設 `gpt-4o`（可改為其他 GitHub Models 支援的模型）|
+| `AI_PROVIDER` | `gemini`（預設）/ `groq` / `github` — 切換 AI chat provider |
+| `GEMINI_API_KEY` | Google AI Studio API key → Gemini 2.0 Flash，1500 req/天 |
+| `GEMINI_MODEL` | 預設 `gemini-2.0-flash` |
+| `GROQ_API_KEY` | Groq API key → Llama，14,400 req/天 |
+| `GROQ_MODEL` | 預設 `llama-3.3-70b-versatile` |
+| `GITHUB_TOKEN` | GitHub PAT（`models:read`）→ GPT-4o，150 req/天 |
+| `GITHUB_MODELS_MODEL` | 預設 `gpt-4o` |
 
 ---
 

@@ -27,7 +27,12 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_MODELS_MODEL: ${GITHUB_MODELS_MODEL:-gpt-4o}
       ITIS_BASE_URL: https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp
     volumes:
