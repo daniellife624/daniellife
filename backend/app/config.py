@@ -1,9 +1,17 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/daniellife"
+
+    @field_validator('DATABASE_URL')
+    @classmethod
+    def fix_db_url(cls, v: str) -> str:
+        if v.startswith('mysql://'):
+            return v.replace('mysql://', 'mysql+pymysql://', 1)
+        return v
 
     # JWT
     SECRET_KEY: str = "change-me-in-production-use-32-chars-min"
