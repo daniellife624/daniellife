@@ -29,13 +29,15 @@
 
     <div class="pagination">
       <button class="pagination__btn" :disabled="page <= 1" @click="goPage(page - 1)">前一頁</button>
-      <button
-        v-for="p in totalPages"
-        :key="p"
-        class="pagination__num"
-        :class="{ 'pagination__num--active': page === p }"
-        @click="goPage(p)"
-      >{{ p }}</button>
+      <template v-for="p in visiblePages" :key="p ?? `dot-${p}`">
+        <span v-if="p === null" class="pagination__dot">…</span>
+        <button
+          v-else
+          class="pagination__num"
+          :class="{ 'pagination__num--active': page === p }"
+          @click="goPage(p)"
+        >{{ p }}</button>
+      </template>
       <button class="pagination__btn" :disabled="page >= totalPages" @click="goPage(page + 1)">下一頁</button>
     </div>
   </div>
@@ -57,6 +59,20 @@ const loading = ref(false)
 
 const PAGE_SIZE = 5
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
+
+const visiblePages = computed((): (number | null)[] => {
+  const n = totalPages.value
+  const c = page.value
+  if (n <= 7) return Array.from({ length: n }, (_, i) => i + 1)
+  const pages = new Set<number>([1, n, c - 2, c - 1, c, c + 1, c + 2].filter(p => p >= 1 && p <= n))
+  const sorted = [...pages].sort((a, b) => a - b)
+  const result: (number | null)[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i]! - sorted[i - 1]! > 1) result.push(null)
+    result.push(sorted[i]!)
+  }
+  return result
+})
 
 const regionTabs: { key: NewsRegion; label: string }[] = [
   { key: 'US',     label: 'US'     },
@@ -105,4 +121,5 @@ onMounted(() => fetchNews())
 .pagination__num { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-ink-4); border-radius: var(--radius-sm); background: var(--color-white); font-size: 13px; color: var(--color-ink-2); cursor: pointer; transition: background 0.15s, color 0.15s; }
 .pagination__num--active { background: var(--color-primary); color: var(--color-ink-1); border-color: var(--color-primary); font-weight: 700; }
 .pagination__num:not(.pagination__num--active):hover { background: rgba(232, 193, 58, 0.18); }
+.pagination__dot { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--color-ink-3); user-select: none; }
 </style>
