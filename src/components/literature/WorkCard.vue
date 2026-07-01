@@ -2,7 +2,7 @@
   <div class="work-card" :data-work-id="work.id">
     <div class="work-card__header">
       <h3 class="work-card__title">{{ work.title }}</h3>
-      <button class="work-card__read-btn">閱讀全文</button>
+      <button v-if="work.fullText" class="work-card__read-btn" @click="showFull = true">閱讀全文</button>
     </div>
     <div class="work-card__row">
       <span class="work-card__label">幾歲撰寫的作品</span>
@@ -21,11 +21,27 @@
       <span class="work-card__val work-card__val--green">{{ work.summary }}</span>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="showFull" class="fulltext-backdrop" @click.self="showFull = false">
+      <div class="fulltext-modal">
+        <div class="fulltext-modal__header">
+          <h3 class="fulltext-modal__title">{{ work.title }}</h3>
+          <button class="fulltext-modal__close" @click="showFull = false">×</button>
+        </div>
+        <div class="fulltext-modal__body">
+          <pre class="fulltext-modal__text">{{ work.fullText }}</pre>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { LiteratureWork } from '@/types/literature'
 defineProps<{ work: LiteratureWork }>()
+const showFull = ref(false)
 </script>
 
 <style scoped>
@@ -111,4 +127,29 @@ defineProps<{ work: LiteratureWork }>()
 
 .work-card__val--yellow { color: #7a5800; }
 .work-card__val--green  { color: #166534; }
+
+.fulltext-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.fulltext-modal {
+  background: #fff; border-radius: 4px; width: 680px; max-width: 92vw;
+  max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.fulltext-modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; background: var(--color-primary);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.fulltext-modal__title {
+  font-family: var(--font-cjk); font-size: 16px; font-weight: 700; color: #1a1000;
+}
+.fulltext-modal__close {
+  background: none; border: none; font-size: 20px; cursor: pointer; color: #555; line-height: 1;
+}
+.fulltext-modal__body { flex: 1; overflow-y: auto; padding: 20px; }
+.fulltext-modal__text {
+  font-family: var(--font-cjk); font-size: 14px; color: var(--color-ink-1);
+  line-height: 2; white-space: pre-wrap; word-break: break-word; margin: 0;
+}
 </style>

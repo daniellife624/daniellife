@@ -52,6 +52,7 @@
           <div class="academic-card__school">{{ m.school }}</div>
           <div class="academic-card__major">{{ m.major }}</div>
           <div class="academic-card__period">{{ m.period }}</div>
+          <div v-if="m.gpa" class="academic-card__gpa">GPA {{ m.gpa }}　排名 {{ m.rank }}</div>
           <div class="academic-card__divider"></div>
           <p class="academic-card__label">重點事蹟</p>
           <ul class="academic-card__list">
@@ -314,6 +315,13 @@ onUnmounted(() => {
 .academic-card__period {
   font-size: 12px;
   color: var(--color-ink-3);
+  margin-top: 2px;
+  font-family: var(--font-body);
+}
+
+.academic-card__gpa {
+  font-size: 12px;
+  color: var(--color-ink-2);
   margin-top: 2px;
   font-family: var(--font-body);
 }
