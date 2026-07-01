@@ -184,6 +184,7 @@ function scrollNext() {
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex: 1;
+  white-space: pre-wrap;
 }
 
 .intern-card__btn {
@@ -307,5 +308,6 @@ function scrollNext() {
   font-size: 14px;
   color: var(--color-ink-2);
   line-height: 1.8;
+  white-space: pre-wrap;
 }
 </style>

@@ -92,7 +92,7 @@ def update_internship(item_id: int, body: s.InternshipIn, db: Session = Depends(
     start, end = _parse_period(body.period)
     obj.company = body.company; obj.dept = body.dept; obj.role = body.role
     obj.start_date = start; obj.end_date = end
-    obj.contribution = body.contribution; obj.photo_url = body.photoUrl
+    obj.contribution = body.contribution
     db.commit(); db.refresh(obj)
     return _intern_out(obj)
 

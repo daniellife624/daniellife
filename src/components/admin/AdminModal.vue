@@ -16,6 +16,16 @@
               class="modal__textarea"
               rows="3"
             ></textarea>
+            <div v-else-if="field.options" class="modal__radio-group">
+              <button
+                v-for="opt in field.options"
+                :key="opt"
+                type="button"
+                class="modal__radio-btn"
+                :class="{ 'modal__radio-btn--active': localFormData[field.key] === opt }"
+                @click="localFormData[field.key] = opt"
+              >{{ opt }}</button>
+            </div>
             <input
               v-else
               v-model="localFormData[field.key]"
@@ -119,7 +129,7 @@
 import { ref, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
 
-export type FieldDef = { key: string; label: string; type?: string; placeholder?: string }
+export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[] }
 
 const props = defineProps<{
   open: boolean
@@ -390,6 +400,11 @@ function handleSave() {
   background: transparent;
 }
 .modal__pm-del-btn:hover { background: #dc2626; color: #fff; }
+
+.modal__radio-group { display: flex; gap: 0; border: 1px solid var(--color-ink-4); border-radius: var(--radius-sm); overflow: hidden; width: fit-content; }
+.modal__radio-btn { padding: var(--space-2) var(--space-5); background: var(--color-white); border: none; font-family: var(--font-cjk); font-size: 14px; color: var(--color-ink-2); cursor: pointer; transition: background 0.15s, color 0.15s; }
+.modal__radio-btn + .modal__radio-btn { border-left: 1px solid var(--color-ink-4); }
+.modal__radio-btn--active { background: var(--color-primary); color: var(--color-ink-1); font-weight: 700; }
 
 .modal__actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 

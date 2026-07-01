@@ -369,14 +369,14 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'periodTo',   label: '畢業年份（留空視為「至今」）', placeholder: '例：2025' },
     { key: 'gpa',        label: 'GPA', placeholder: '4.26/4.30' },
     { key: 'rank',       label: '排名', placeholder: '3/71' },
-    { key: 'sortOrder',  label: '顯示順序', type: 'number' },
+    { key: 'sortOrder',  label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
     { key: 'facts',      label: '重點事蹟（每行一條）', type: 'textarea' },
   ],
   futureplans: [
     { key: 'phase',     label: '階段', placeholder: 'short / mid-short / mid' },
     { key: 'title',     label: '標題', placeholder: '短期' },
     { key: 'subtitle',  label: '副標題', placeholder: '近一年' },
-    { key: 'sortOrder', label: '顯示順序', type: 'number' },
+    { key: 'sortOrder', label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
     { key: 'items',     label: '項目（每行一條）', type: 'textarea' },
   ],
   langcerts: [
@@ -386,9 +386,9 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'pct',   label: '進度百分比 (0–100)', type: 'number' },
   ],
   certgroups: [
-    { key: 'domain',    label: '領域', placeholder: 'finance / it' },
+    { key: 'domain',    label: '領域', options: ['finance', 'it'] },
     { key: 'category',  label: '類別', placeholder: '國際證照' },
-    { key: 'sortOrder', label: '顯示順序', type: 'number' },
+    { key: 'sortOrder', label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
     { key: 'items',     label: '證照項目（每行一條）', type: 'textarea' },
   ],
   travel: [
@@ -652,7 +652,6 @@ async function saveModal(
         company: s('company'), dept: s('dept'), role: s('role'),
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         contribution: s('contribution'),
-        photoUrl: undefined as string | undefined,
       }
       if (isEdit) {
         replaceInList(interns.value, await updateInternship(editId.value!, body))

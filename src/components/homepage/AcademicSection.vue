@@ -352,16 +352,8 @@ onUnmounted(() => {
   font-family: var(--font-cjk);
   font-size: 13px;
   color: var(--color-ink-2);
-  padding-left: var(--space-3);
-  position: relative;
   line-height: 1.6;
-}
-
-.academic-card__list li::before {
-  content: '•';
-  position: absolute;
-  left: 0;
-  color: var(--color-primary);
+  white-space: pre-wrap;
 }
 
 @media (max-width: 767px) {
