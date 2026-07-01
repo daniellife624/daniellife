@@ -90,23 +90,27 @@
       <AdminTable
         v-if="current === 'academic'"
         title="求學歷程"
-        :columns="['學校', '科系', '期間', 'GPA', '排名', '順序']"
-        :rows="academics.map(a => [a.school, a.major, a.period, a.gpa, a.rank, String(a.sortOrder ?? 0)])"
+        :columns="['學校', '科系', '期間', 'GPA', '排名']"
+        :rows="academics.map(a => [a.school, a.major, a.period, a.gpa, a.rank])"
         :ids="academics.map(a => a.id)"
+        draggable
         @add="openAdd"
         @edit="openEdit"
         @delete="deleteItem"
+        @reorder="handleReorder"
       />
 
       <AdminTable
         v-if="current === 'futureplans'"
         title="未來規劃"
-        :columns="['階段', '標題', '副標題', '順序']"
-        :rows="futurePlans.map(p => [p.phase, p.title, p.subtitle, String(p.sortOrder ?? 0)])"
+        :columns="['階段', '標題', '副標題']"
+        :rows="futurePlans.map(p => [p.phase, p.title, p.subtitle])"
         :ids="futurePlans.map(p => p.id)"
+        draggable
         @add="openAdd"
         @edit="openEdit"
         @delete="deleteItem"
+        @reorder="handleReorder"
       />
 
       <AdminTable
@@ -123,12 +127,14 @@
       <AdminTable
         v-if="current === 'certgroups'"
         title="財會/資訊證照"
-        :columns="['領域', '類別', '項目數', '順序']"
-        :rows="certGroups.map(g => [g.domain, g.category, String(g.items.length), String(g.sortOrder)])"
+        :columns="['領域', '類別', '項目數']"
+        :rows="certGroups.map(g => [g.domain, g.category, String(g.items.length)])"
         :ids="certGroups.map(g => g.id)"
+        draggable
         @add="openAdd"
         @edit="openEdit"
         @delete="deleteItem"
+        @reorder="handleReorder"
       />
 
       <AdminTable
@@ -179,9 +185,12 @@ import {
   uploadInternshipPhoto, deleteInternshipPhoto,
   getProjects,    createProject,    updateProject,    deleteProject,
   getAcademicMilestones, createAcademicMilestone, updateAcademicMilestone, deleteAcademicMilestone,
+  reorderAcademic,
   getFuturePlans, createFuturePlan, updateFuturePlan, deleteFuturePlan,
+  reorderFuturePlans,
   getLangCerts,   createLangCert,   updateLangCert,   deleteLangCert,
   getCertGroups,  createCertGroup,  updateCertGroup,  deleteCertGroup,
+  reorderCertGroups,
 } from '@/api/homepage'
 import {
   getExperiences, createExperience, updateExperience, deleteExperience,
@@ -369,15 +378,13 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'periodTo',   label: '畢業年月（留空視為「至今」）', placeholder: '例：2025/06 或 至今' },
     { key: 'gpa',        label: 'GPA', placeholder: '4.26/4.30' },
     { key: 'rank',       label: '排名', placeholder: '3/71' },
-    { key: 'sortOrder',  label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
     { key: 'facts',      label: '重點事蹟（每行一條）', type: 'textarea' },
   ],
   futureplans: [
-    { key: 'phase',     label: '階段', placeholder: 'short / mid-short / mid' },
-    { key: 'title',     label: '標題', placeholder: '短期' },
-    { key: 'subtitle',  label: '副標題', placeholder: '近一年' },
-    { key: 'sortOrder', label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
-    { key: 'items',     label: '項目（每行一條）', type: 'textarea' },
+    { key: 'phase',    label: '階段', placeholder: 'short / mid-short / mid' },
+    { key: 'title',    label: '標題', placeholder: '短期' },
+    { key: 'subtitle', label: '副標題', placeholder: '近一年' },
+    { key: 'items',    label: '項目（每行一條）', type: 'textarea' },
   ],
   langcerts: [
     { key: 'lang',  label: '語言', placeholder: 'en / jp' },
@@ -386,10 +393,9 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'pct',   label: '進度百分比 (0–100)', type: 'number' },
   ],
   certgroups: [
-    { key: 'domain',    label: '領域', options: ['財會', '資訊'] },
-    { key: 'category',  label: '類別', options: ['國內', '國外'] },
-    { key: 'sortOrder', label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
-    { key: 'items',     label: '證照項目（每行一條）', type: 'textarea' },
+    { key: 'domain',   label: '領域', options: ['財會', '資訊'] },
+    { key: 'category', label: '類別', options: ['國內', '國外'] },
+    { key: 'items',    label: '證照項目（每行一條）', type: 'textarea' },
   ],
   travel: [
     { key: 'country',    label: '國家' },
@@ -498,14 +504,14 @@ function openEdit(id: number) {
       school: item.school, major: item.major,
       periodFrom: p.from, periodTo: p.to,
       gpa: item.gpa, rank: item.rank,
-      sortOrder: String(item.sortOrder ?? 0),
+      _sortOrder: String(item.sortOrder ?? 0),
       facts: item.facts.join('\n'),
     })
   } else if (current.value === 'futureplans') {
     const item = futurePlans.value.find((p) => p.id === id)!
     Object.assign(fd, {
       phase: item.phase, title: item.title, subtitle: item.subtitle,
-      sortOrder: String(item.sortOrder ?? 0),
+      _sortOrder: String(item.sortOrder ?? 0),
       items: item.items.join('\n'),
     })
   } else if (current.value === 'langcerts') {
@@ -516,7 +522,7 @@ function openEdit(id: number) {
     const domainLabel = item.domain === 'finance' ? '財會' : item.domain === 'it' ? '資訊' : item.domain
     Object.assign(fd, {
       domain: domainLabel, category: item.category,
-      sortOrder: String(item.sortOrder),
+      _sortOrder: String(item.sortOrder),
       items: item.items.join('\n'),
     })
   } else if (current.value === 'travel') {
@@ -765,7 +771,7 @@ async function saveModal(
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         gpa: s('gpa'), rank: s('rank'),
         facts: s('facts').split('\n').map((f) => f.trim()).filter(Boolean),
-        sortOrder: Number(s('sortOrder')) || 0,
+        sortOrder: isEdit ? (Number(fd['_sortOrder']) || 0) : academics.value.length + 1,
       }
       if (isEdit) {
         replaceInList(academics.value, await updateAcademicMilestone(editId.value!, body))
@@ -778,7 +784,7 @@ async function saveModal(
         phase: s('phase') as FuturePlan['phase'],
         title: s('title'), subtitle: s('subtitle'),
         items: s('items').split('\n').map((f) => f.trim()).filter(Boolean),
-        sortOrder: Number(s('sortOrder')) || 0,
+        sortOrder: isEdit ? (Number(fd['_sortOrder']) || 0) : futurePlans.value.length + 1,
       }
       if (isEdit) {
         replaceInList(futurePlans.value, await updateFuturePlan(editId.value!, body))
@@ -802,7 +808,7 @@ async function saveModal(
         domain: s('domain') as CertGroupAdmin['domain'],
         category: s('category'),
         items: s('items').split('\n').map((f) => f.trim()).filter(Boolean),
-        sortOrder: Number(s('sortOrder')) || 0,
+        sortOrder: isEdit ? (Number(fd['_sortOrder']) || 0) : certGroups.value.length + 1,
       }
       if (isEdit) {
         replaceInList(certGroups.value, await updateCertGroup(editId.value!, body))
@@ -964,6 +970,39 @@ async function deleteAdminInternPhoto() {
     saveError.value = err instanceof Error ? err.message : '刪除失敗'
   } finally {
     photoUploading.value = false
+  }
+}
+
+// ── handleReorder (drag-and-drop sort) ──
+async function handleReorder(fromIndex: number, toIndex: number) {
+  if (fromIndex === toIndex) return
+
+  function move<T>(arr: T[]): T[] {
+    const copy = [...arr]
+    const [item] = copy.splice(fromIndex, 1)
+    copy.splice(toIndex, 0, item)
+    return copy
+  }
+
+  try {
+    if (current.value === 'academic') {
+      const reordered = move(academics.value)
+      academics.value = reordered
+      await reorderAcademic(reordered.map((a, i) => ({ id: a.id, sortOrder: i + 1 })))
+      reordered.forEach((a, i) => { a.sortOrder = i + 1 })
+    } else if (current.value === 'futureplans') {
+      const reordered = move(futurePlans.value)
+      futurePlans.value = reordered
+      await reorderFuturePlans(reordered.map((p, i) => ({ id: p.id, sortOrder: i + 1 })))
+      reordered.forEach((p, i) => { p.sortOrder = i + 1 })
+    } else if (current.value === 'certgroups') {
+      const reordered = move(certGroups.value)
+      certGroups.value = reordered
+      await reorderCertGroups(reordered.map((g, i) => ({ id: g.id, sortOrder: i + 1 })))
+      reordered.forEach((g, i) => { g.sortOrder = i + 1 })
+    }
+  } catch {
+    alert('排序更新失敗，請重試')
   }
 }
 

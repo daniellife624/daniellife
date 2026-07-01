@@ -192,17 +192,28 @@ def delete_project(item_id: int, db: Session = Depends(get_db), _=Depends(get_cu
 
 
 # ── Certs (public) ────────────────────────────────────────────────
+def _merge_cert_groups(rows) -> list[s.CertGroupOut]:
+    merged: dict[str, list[str]] = {}
+    order: list[str] = []
+    for r in rows:
+        items = json.loads(r.items) if r.items else []
+        if r.category not in merged:
+            merged[r.category] = []
+            order.append(r.category)
+        merged[r.category].extend(items)
+    return [s.CertGroupOut(category=cat, items=merged[cat]) for cat in order]
+
+
 @router.get("/certs", response_model=s.CertDataOut)
 def get_certs(db: Session = Depends(get_db)):
     lang_en = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
                for r in db.query(m.LanguageCert).filter(m.LanguageCert.lang == "en").all()]
     lang_jp = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
                for r in db.query(m.LanguageCert).filter(m.LanguageCert.lang == "jp").all()]
-    finance = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
-               for r in db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["finance", "財會"])).order_by(m.CertGroup.sort_order).all()]
-    it = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
-          for r in db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["it", "資訊"])).order_by(m.CertGroup.sort_order).all()]
-    return s.CertDataOut(language=s.LanguageData(en=lang_en, jp=lang_jp), finance=finance, it=it)
+    finance_rows = db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["finance", "財會"])).order_by(m.CertGroup.sort_order).all()
+    it_rows = db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["it", "資訊"])).order_by(m.CertGroup.sort_order).all()
+    return s.CertDataOut(language=s.LanguageData(en=lang_en, jp=lang_jp),
+                         finance=_merge_cert_groups(finance_rows), it=_merge_cert_groups(it_rows))
 
 
 # ── Lang Certs (admin CRUD) ───────────────────────────────────────
@@ -264,6 +275,13 @@ def create_cert_group(body: s.CertGroupIn, db: Session = Depends(get_db), _=Depe
     return _cert_group_out(obj)
 
 
+@router.put("/cert-groups/sort-order", status_code=204)
+def reorder_cert_groups(body: list[s.SortOrderItem], db: Session = Depends(get_db), _=Depends(get_current_user)):
+    for item in body:
+        db.query(m.CertGroup).filter(m.CertGroup.id == item.id).update({"sort_order": item.sortOrder})
+    db.commit()
+
+
 @router.put("/cert-groups/{item_id}", response_model=s.CertGroupAdminOut)
 def update_cert_group(item_id: int, body: s.CertGroupIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = db.query(m.CertGroup).filter(m.CertGroup.id == item_id).first()
@@ -308,6 +326,13 @@ def create_academic(body: s.AcademicMilestoneIn, db: Session = Depends(get_db), 
     )
 
 
+@router.put("/academic/sort-order", status_code=204)
+def reorder_academic(body: list[s.SortOrderItem], db: Session = Depends(get_db), _=Depends(get_current_user)):
+    for item in body:
+        db.query(m.AcademicMilestone).filter(m.AcademicMilestone.id == item.id).update({"sort_order": item.sortOrder})
+    db.commit()
+
+
 @router.put("/academic/{item_id}", response_model=s.AcademicMilestoneOut)
 def update_academic(item_id: int, body: s.AcademicMilestoneIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = db.query(m.AcademicMilestone).filter(m.AcademicMilestone.id == item_id).first()
@@ -349,6 +374,13 @@ def create_future_plan(body: s.FuturePlanIn, db: Session = Depends(get_db), _=De
     )
     db.add(obj); db.commit(); db.refresh(obj)
     return s.FuturePlanOut(id=obj.id, phase=obj.phase, title=obj.title, subtitle=obj.subtitle, items=json.loads(obj.items), sortOrder=obj.sort_order)
+
+
+@router.put("/future-plans/sort-order", status_code=204)
+def reorder_future_plans(body: list[s.SortOrderItem], db: Session = Depends(get_db), _=Depends(get_current_user)):
+    for item in body:
+        db.query(m.FuturePlan).filter(m.FuturePlan.id == item.id).update({"sort_order": item.sortOrder})
+    db.commit()
 
 
 @router.put("/future-plans/{item_id}", response_model=s.FuturePlanOut)

@@ -4,6 +4,11 @@ from pydantic import BaseModel, field_validator
 
 
 _MONTH_RE = re.compile(r'^\d{4}/(0[1-9]|1[0-2])$')
+
+
+class SortOrderItem(BaseModel):
+    id: int
+    sortOrder: int
 _PERIOD_RE = re.compile(r'^\d{4}/(0[1-9]|1[0-2]) – (\d{4}/(0[1-9]|1[0-2])|至今)$')
 _YEAR_PERIOD_RE = re.compile(r'^\d{4}(/\d{2})? – (\d{4}(/\d{2})?|至今)$')
 _DATE_RE = re.compile(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')

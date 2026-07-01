@@ -97,6 +97,10 @@ export async function deleteAcademicMilestone(id: number): Promise<void> {
   await apiFetch(`/api/homepage/academic/${id}`, { method: 'DELETE' })
 }
 
+export async function reorderAcademic(order: { id: number; sortOrder: number }[]): Promise<void> {
+  await apiFetch('/api/homepage/academic/sort-order', { method: 'PUT', body: JSON.stringify(order) })
+}
+
 // ── FuturePlans ──────────────────────────────────────────────────
 export async function getFuturePlans(): Promise<FuturePlan[]> {
   try { return await apiFetch<FuturePlan[]>('/api/homepage/future-plans') } catch { return [] }
@@ -109,4 +113,12 @@ export async function updateFuturePlan(id: number, body: Omit<FuturePlan, 'id'>)
 }
 export async function deleteFuturePlan(id: number): Promise<void> {
   await apiFetch(`/api/homepage/future-plans/${id}`, { method: 'DELETE' })
+}
+export async function reorderFuturePlans(order: { id: number; sortOrder: number }[]): Promise<void> {
+  await apiFetch('/api/homepage/future-plans/sort-order', { method: 'PUT', body: JSON.stringify(order) })
+}
+
+// ── Cert Groups sort-order ────────────────────────────────────────
+export async function reorderCertGroups(order: { id: number; sortOrder: number }[]): Promise<void> {
+  await apiFetch('/api/homepage/cert-groups/sort-order', { method: 'PUT', body: JSON.stringify(order) })
 }

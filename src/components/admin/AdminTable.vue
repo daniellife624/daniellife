@@ -8,15 +8,32 @@
       <table class="crud-table">
         <thead>
           <tr>
+            <th v-if="draggable" class="crud-th--drag"></th>
             <th v-for="col in columns" :key="col">{{ col }}</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!rows.length">
-            <td :colspan="columns.length + 1" class="crud-empty">尚無資料</td>
+            <td :colspan="columns.length + (draggable ? 2 : 1)" class="crud-empty">尚無資料</td>
           </tr>
-          <tr v-for="(row, i) in rows" :key="ids[i]" class="crud-row">
+          <tr
+            v-for="(row, i) in rows"
+            :key="ids[i]"
+            class="crud-row"
+            :class="{
+              'crud-row--drag-over': draggable && dragOverIdx === i && draggingIdx !== i,
+              'crud-row--dragging':  draggable && draggingIdx === i,
+            }"
+            :draggable="draggable || undefined"
+            @dragstart="draggable ? onDragStart($event, i) : undefined"
+            @dragover.prevent="draggable ? onDragOver(i) : undefined"
+            @drop.prevent="draggable ? onDrop(i) : undefined"
+            @dragend="draggable ? onDragEnd() : undefined"
+          >
+            <td v-if="draggable" class="crud-cell crud-cell--drag">
+              <span class="drag-handle">⠿</span>
+            </td>
             <td v-for="(cell, j) in row" :key="j" class="crud-cell">{{ cell }}</td>
             <td class="crud-cell crud-cell--actions">
               <button class="crud-btn crud-btn--edit" @click="$emit('edit', ids[i] ?? 0)">編輯</button>
@@ -30,18 +47,47 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  title:   string
-  columns: string[]
-  rows:    string[][]
-  ids:     number[]
+import { ref } from 'vue'
+
+withDefaults(defineProps<{
+  title:     string
+  columns:   string[]
+  rows:      string[][]
+  ids:       number[]
+  draggable?: boolean
+}>(), { draggable: false })
+
+const emit = defineEmits<{
+  add:     []
+  edit:    [id: number]
+  delete:  [id: number]
+  reorder: [fromIndex: number, toIndex: number]
 }>()
 
-defineEmits<{
-  add:    []
-  edit:   [id: number]
-  delete: [id: number]
-}>()
+const draggingIdx = ref<number | null>(null)
+const dragOverIdx = ref<number | null>(null)
+
+function onDragStart(e: DragEvent, i: number) {
+  draggingIdx.value = i
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onDragOver(i: number) {
+  dragOverIdx.value = i
+}
+
+function onDrop(i: number) {
+  if (draggingIdx.value !== null && draggingIdx.value !== i) {
+    emit('reorder', draggingIdx.value, i)
+  }
+  draggingIdx.value = null
+  dragOverIdx.value = null
+}
+
+function onDragEnd() {
+  draggingIdx.value = null
+  dragOverIdx.value = null
+}
 </script>
 
 <style scoped>
@@ -82,8 +128,12 @@ defineEmits<{
   white-space: nowrap;
 }
 
+.crud-th--drag { width: 32px; }
+
 .crud-row:nth-child(even) { background: #fafafa; }
 .crud-row:hover { background: var(--color-primary-bg); }
+.crud-row--drag-over { border-top: 2px solid var(--color-primary); }
+.crud-row--dragging { opacity: 0.35; }
 
 .crud-cell {
   padding: var(--space-3) var(--space-4);
@@ -94,6 +144,20 @@ defineEmits<{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.crud-cell--drag {
+  width: 32px;
+  text-align: center;
+  max-width: 32px;
+  cursor: grab;
+  color: var(--color-ink-4);
+}
+
+.drag-handle {
+  font-size: 16px;
+  user-select: none;
+  display: inline-block;
 }
 
 .crud-cell--actions {
