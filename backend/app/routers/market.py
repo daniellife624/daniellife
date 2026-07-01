@@ -6,6 +6,43 @@ from ..config import settings
 
 router = APIRouter(prefix="/market", tags=["market"])
 
+_YF_SYMBOLS = ",".join([
+    "^TWII", "^TWO",
+    "^N225", "^KS11", "^HSI", "000001.SS",
+    "^FTSE", "^GDAXI", "^FCHI", "^STOXX50E",
+    "^GSPC", "^DJI", "^IXIC", "^RUT",
+])
+_YF_URL = f"https://query2.finance.yahoo.com/v7/finance/quote?symbols={_YF_SYMBOLS}"
+_YF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://finance.yahoo.com/",
+}
+
+
+@router.get("/quotes")
+async def get_quotes():
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            res = await client.get(_YF_URL, headers=_YF_HEADERS)
+            res.raise_for_status()
+            results: list = res.json().get("quoteResponse", {}).get("result", [])
+            return {
+                r["symbol"]: {
+                    "price": r.get("regularMarketPrice", 0),
+                    "change": r.get("regularMarketChange", 0),
+                    "changePct": r.get("regularMarketChangePercent", 0),
+                    "open": r.get("regularMarketOpen", 0),
+                    "high": r.get("regularMarketDayHigh", 0),
+                    "low": r.get("regularMarketDayLow", 0),
+                    "prev": r.get("regularMarketPreviousClose", 0),
+                }
+                for r in results
+            }
+    except Exception:
+        return {}
+
 
 _PROVIDERS: dict[str, dict] = {
     "gemini": {
