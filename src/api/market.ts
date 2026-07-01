@@ -37,22 +37,34 @@ async function fetchGuardian(page: number, keyword: string): Promise<{ items: Ne
 }
 
 // ── ITIS backend proxy (TAIWAN) ──
+const TAIWAN_CATES = new Set(['cate1', 'cate2'])
+
 async function fetchTaiwanNews(page: number, keyword: string): Promise<{ items: NewsItem[]; total: number }> {
-  const params = new URLSearchParams({ region: 'TAIWAN', page: String(page) })
-  if (keyword) params.set('keyword', keyword)
-  const data = await apiFetch<{ items: Array<{ id: string; title: string; summary: string; url: string; publishedAt: string; source: string }>; total: number }>(
-    `/api/market/news?${params}`
-  )
-  const items: NewsItem[] = data.items.map((r, i) => ({
-    id: (page - 1) * 5 + i + 1,
-    title: r.title,
-    summary: r.summary,
-    source: r.source,
-    publishedAt: r.publishedAt,
-    region: 'TAIWAN',
-    url: r.url,
-  }))
-  return { items, total: data.total }
+  const data = await apiFetch<{
+    categories: { id: string; name: string; articles: { title: string; url: string }[] }[]
+  }>('/api/news/taiwan')
+
+  const all: NewsItem[] = []
+  let idx = 1
+  for (const cat of data.categories) {
+    if (!TAIWAN_CATES.has(cat.id)) continue
+    for (const art of cat.articles) {
+      if (keyword && !art.title.includes(keyword)) continue
+      all.push({
+        id: idx++,
+        title: art.title,
+        summary: '',
+        source: cat.name,
+        publishedAt: '',
+        region: 'TAIWAN',
+        url: art.url,
+      })
+    }
+  }
+
+  const PAGE_SIZE = 5
+  const start = (page - 1) * PAGE_SIZE
+  return { items: all.slice(start, start + PAGE_SIZE), total: all.length }
 }
 
 // ── Fallback mock (Guardian fails) ──

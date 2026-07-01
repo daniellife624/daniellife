@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .database import Base, engine
-from .routers import auth, homepage, activities, social, literature, finance, thesis, market
+from .routers import auth, homepage, activities, social, literature, finance, thesis, market, news
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ app.include_router(literature.router, prefix="/api")
 app.include_router(finance.router,    prefix="/api")
 app.include_router(thesis.router,     prefix="/api")
 app.include_router(market.router,     prefix="/api")
+app.include_router(news.router)
 
 
 _uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
