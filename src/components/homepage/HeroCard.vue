@@ -5,7 +5,7 @@
       <!-- 左欄：個人資訊 -->
       <div class="hero__left">
         <div class="hero__name-row">
-          <h1 class="hero__name">周彥廷 <span class="hero__age">(22)</span></h1>
+          <h1 class="hero__name">周彥廷 <span class="hero__age">({{ age }})</span></h1>
           <p class="hero__meta">Taipei ／ 臺中人 ／ Male ／ <span class="hero__traits">沉穩、負責任、有企圖心</span></p>
         </div>
         <p class="hero__subtitle">NTU 臺大會計 ／ Financer ／ Web designer ／ Writer</p>
@@ -57,6 +57,10 @@
 </template>
 
 <script setup lang="ts">
+const BIRTH = new Date('2003-06-24')
+const today = new Date()
+let age = today.getFullYear() - BIRTH.getFullYear()
+if (today < new Date(today.getFullYear(), BIRTH.getMonth(), BIRTH.getDate())) age--
 </script>
 
 <style scoped>

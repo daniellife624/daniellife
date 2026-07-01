@@ -13,7 +13,8 @@
             <h3 class="intern-card__company">{{ item.company }}</h3>
             <p class="intern-card__dept">部門/職稱：{{ item.dept }}/{{ item.role }}</p>
             <div class="intern-card__photo">
-              <span class="intern-card__photo-hint">這裡打算放一張照片</span>
+              <img v-if="item.photoUrl" :src="mediaUrl(item.photoUrl)" :alt="item.company" class="intern-card__photo-img" />
+              <span v-else class="intern-card__photo-hint">尚未上傳照片</span>
             </div>
             <p class="intern-card__contrib">主要貢獻：{{ item.contribution }}</p>
             <button class="intern-card__btn" @click="activeIntern = item">查看更多</button>
@@ -33,7 +34,8 @@
         <p class="intern-modal__meta">部門：{{ activeIntern.dept }}　　職稱：{{ activeIntern.role }}</p>
         <p class="intern-modal__meta">實習期間：{{ activeIntern.period }}</p>
         <div class="intern-modal__photo">
-          <span class="intern-modal__photo-hint">這裡打算放一張照片</span>
+          <img v-if="activeIntern.photoUrl" :src="mediaUrl(activeIntern.photoUrl)" :alt="activeIntern.company" class="intern-modal__photo-img" />
+          <span v-else class="intern-modal__photo-hint">尚未上傳照片</span>
         </div>
         <div class="intern-modal__section">
           <p class="intern-modal__label">主要貢獻</p>
@@ -47,6 +49,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getInternships } from '@/api/homepage'
+import { mediaUrl } from '@/api/client'
 import type { Internship } from '@/types/homepage'
 
 const listEl = ref<HTMLElement | null>(null)
@@ -165,6 +168,13 @@ function scrollNext() {
   color: var(--color-ink-1);
 }
 
+.intern-card__photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
 .intern-card__contrib {
   font-size: 13px;
   color: var(--color-ink-2);
@@ -273,6 +283,13 @@ function scrollNext() {
   font-family: var(--font-cjk);
   font-size: 13px;
   color: var(--color-ink-1);
+}
+
+.intern-modal__photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
 }
 
 .intern-modal__section { display: flex; flex-direction: column; gap: var(--space-2); }
