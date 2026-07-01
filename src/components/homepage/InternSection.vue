@@ -237,6 +237,8 @@ function scrollNext() {
   padding: var(--space-6);
   width: 520px;
   max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
   position: relative;
   display: flex;
   flex-direction: column;

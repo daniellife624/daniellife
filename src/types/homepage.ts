@@ -51,7 +51,7 @@ export interface CertGroup {
 
 export interface CertGroupAdmin {
   id: number
-  domain: 'finance' | 'it'
+  domain: '財會' | '資訊' | 'finance' | 'it'
   category: string
   items: string[]
   sortOrder: number

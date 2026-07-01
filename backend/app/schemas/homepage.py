@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 
 _MONTH_RE = re.compile(r'^\d{4}/(0[1-9]|1[0-2])$')
 _PERIOD_RE = re.compile(r'^\d{4}/(0[1-9]|1[0-2]) – (\d{4}/(0[1-9]|1[0-2])|至今)$')
-_YEAR_PERIOD_RE = re.compile(r'^\d{4} – (\d{4}|至今)$')
+_YEAR_PERIOD_RE = re.compile(r'^\d{4}(/\d{2})? – (\d{4}(/\d{2})?|至今)$')
 _DATE_RE = re.compile(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
 
 
@@ -192,8 +192,8 @@ class CertGroupIn(BaseModel):
     @field_validator('domain')
     @classmethod
     def domain_choices(cls, v: str) -> str:
-        if v not in ('finance', 'it'):
-            raise ValueError('「領域」須為 finance 或 it')
+        if v not in ('finance', 'it', '財會', '資訊'):
+            raise ValueError('「領域」須為 財會 或 資訊')
         return v
 
     @field_validator('category')

@@ -365,8 +365,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   academic: [
     { key: 'school',     label: '學校' },
     { key: 'major',      label: '科系' },
-    { key: 'periodFrom', label: '入學年份', placeholder: '例：2021' },
-    { key: 'periodTo',   label: '畢業年份（留空視為「至今」）', placeholder: '例：2025' },
+    { key: 'periodFrom', label: '入學年月', placeholder: '例：2021/09' },
+    { key: 'periodTo',   label: '畢業年月（留空視為「至今」）', placeholder: '例：2025/06 或 至今' },
     { key: 'gpa',        label: 'GPA', placeholder: '4.26/4.30' },
     { key: 'rank',       label: '排名', placeholder: '3/71' },
     { key: 'sortOrder',  label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
@@ -386,8 +386,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'pct',   label: '進度百分比 (0–100)', type: 'number' },
   ],
   certgroups: [
-    { key: 'domain',    label: '領域', options: ['finance', 'it'] },
-    { key: 'category',  label: '類別', placeholder: '國際證照' },
+    { key: 'domain',    label: '領域', options: ['財會', '資訊'] },
+    { key: 'category',  label: '類別', options: ['國內', '國外'] },
     { key: 'sortOrder', label: '顯示順序', type: 'number', placeholder: '1 = 最先顯示，數字越小越前' },
     { key: 'items',     label: '證照項目（每行一條）', type: 'textarea' },
   ],
@@ -513,8 +513,9 @@ function openEdit(id: number) {
     Object.assign(fd, { lang: item.lang, name: item.name, score: item.score, pct: String(item.pct) })
   } else if (current.value === 'certgroups') {
     const item = certGroups.value.find((g) => g.id === id)!
+    const domainLabel = item.domain === 'finance' ? '財會' : item.domain === 'it' ? '資訊' : item.domain
     Object.assign(fd, {
-      domain: item.domain, category: item.category,
+      domain: domainLabel, category: item.category,
       sortOrder: String(item.sortOrder),
       items: item.items.join('\n'),
     })
@@ -603,9 +604,10 @@ function validateForm(fd: Record<string, string>): string {
   } else if (current.value === 'academic') {
     if (!s('school').trim()) return '「學校」不可空白'
     if (!s('major').trim()) return '「科系」不可空白'
-    if (!YEAR.test(s('periodFrom'))) return '「入學年份」須為 4 位數字（例：2021）'
-    if (s('periodTo') && !YEAR.test(s('periodTo')) && s('periodTo').trim() !== '至今')
-      return '「畢業年份」須為 4 位數字，或填「至今」，或留空'
+    const YEAR_MONTH = /^\d{4}(\/\d{2})?$/
+    if (!YEAR_MONTH.test(s('periodFrom').trim())) return '「入學年月」格式須為 YYYY 或 YYYY/MM（例：2021/09）'
+    if (s('periodTo').trim() && !YEAR_MONTH.test(s('periodTo').trim()) && s('periodTo').trim() !== '至今')
+      return '「畢業年月」格式須為 YYYY、YYYY/MM，或填「至今」，或留空'
   } else if (current.value === 'futureplans') {
     if (!['short', 'mid-short', 'mid'].includes(s('phase')))
       return '「階段」須為 short / mid-short / mid'
@@ -618,8 +620,8 @@ function validateForm(fd: Record<string, string>): string {
     const pct = Number(s('pct'))
     if (isNaN(pct) || pct < 0 || pct > 100) return '「進度百分比」須為 0 到 100 之間的數字'
   } else if (current.value === 'certgroups') {
-    if (!['finance', 'it'].includes(s('domain'))) return '「領域」須為 finance 或 it'
-    if (!s('category').trim()) return '「類別」不可空白'
+    if (!['財會', '資訊'].includes(s('domain'))) return '「領域」須為 財會 或 資訊'
+    if (!['國內', '國外'].includes(s('category'))) return '「類別」須為 國內 或 國外'
     if (!s('items').trim()) return '「證照項目」至少要有一條'
   } else if (current.value === 'travel') {
     if (!s('country').trim()) return '「國家」不可空白'

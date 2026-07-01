@@ -199,9 +199,9 @@ def get_certs(db: Session = Depends(get_db)):
     lang_jp = [s.LangCertOut(name=r.name, score=r.score, pct=r.pct)
                for r in db.query(m.LanguageCert).filter(m.LanguageCert.lang == "jp").all()]
     finance = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
-               for r in db.query(m.CertGroup).filter(m.CertGroup.domain == "finance").order_by(m.CertGroup.sort_order).all()]
+               for r in db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["finance", "財會"])).order_by(m.CertGroup.sort_order).all()]
     it = [s.CertGroupOut(category=r.category, items=json.loads(r.items) if r.items else [])
-          for r in db.query(m.CertGroup).filter(m.CertGroup.domain == "it").order_by(m.CertGroup.sort_order).all()]
+          for r in db.query(m.CertGroup).filter(m.CertGroup.domain.in_(["it", "資訊"])).order_by(m.CertGroup.sort_order).all()]
     return s.CertDataOut(language=s.LanguageData(en=lang_en, jp=lang_jp), finance=finance, it=it)
 
 

@@ -29,7 +29,10 @@
           >
             <div class="sticky-card__top">
               <h4 class="sticky-card__title">{{ idea.title }}</h4>
-              <button class="sticky-card__del" @click.stop="deleteIdea(idea.id)">×</button>
+              <div class="sticky-card__actions">
+                <button class="sticky-card__expand" @click.stop="selectedIdea = idea">展開</button>
+                <button class="sticky-card__del" @click.stop="deleteIdea(idea.id)">×</button>
+              </div>
             </div>
             <p class="sticky-card__content">{{ idea.content }}</p>
             <p class="sticky-card__date">{{ idea.createdAt }}</p>
@@ -37,6 +40,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Detail Modal -->
+    <Teleport to="body">
+      <div v-if="selectedIdea" class="modal-backdrop" @click.self="selectedIdea = null">
+        <div class="modal">
+          <button class="modal__close" @click="selectedIdea = null">×</button>
+          <h3 class="modal__title">{{ selectedIdea.title }}</h3>
+          <p class="modal__detail-content">{{ selectedIdea.content }}</p>
+          <p class="modal__detail-date">{{ selectedIdea.createdAt }}</p>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Add Idea Modal -->
     <Teleport to="body">
@@ -67,7 +82,8 @@ import { ref, onMounted } from 'vue'
 import { getThesisIdeas, addThesisIdea, updateIdeaStatus, deleteThesisIdea } from '@/api/thesis'
 import type { ThesisIdea, IdeaStatus } from '@/types/thesis'
 
-const ideas = ref<ThesisIdea[]>([])
+const ideas       = ref<ThesisIdea[]>([])
+const selectedIdea = ref<ThesisIdea | null>(null)
 const kanbanCols: { status: IdeaStatus; label: string }[] = [
   { status: 'pending',  label: '待確認（重量提）' },
   { status: 'rejected', label: '被拒絕 / 不可執行' },
@@ -156,7 +172,10 @@ onMounted(async () => { ideas.value = await getThesisIdeas() })
 .sticky-card--dragging { opacity: 0.4; cursor: grabbing; }
 
 .sticky-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
-.sticky-card__title { font-family: var(--font-cjk); font-size: 14px; font-weight: 700; color: var(--color-ink-1); line-height: 1.4; }
+.sticky-card__title { font-family: var(--font-cjk); font-size: 14px; font-weight: 700; color: var(--color-ink-1); line-height: 1.4; flex: 1; }
+.sticky-card__actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.sticky-card__expand { background: none; border: 1px solid var(--color-ink-3); border-radius: 4px; font-size: 11px; font-family: var(--font-cjk); color: var(--color-ink-3); cursor: pointer; padding: 1px 6px; line-height: 1.4; transition: border-color 0.15s, color 0.15s; }
+.sticky-card__expand:hover { border-color: var(--color-ink-1); color: var(--color-ink-1); }
 .sticky-card__del { background: none; border: none; font-size: 16px; color: var(--color-ink-4); cursor: pointer; flex-shrink: 0; line-height: 1; padding: 0; }
 .sticky-card__del:hover { color: #dc2626; }
 .sticky-card__content { font-family: var(--font-cjk); font-size: 12px; color: var(--color-ink-2); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
@@ -176,6 +195,9 @@ onMounted(async () => { ideas.value = await getThesisIdeas() })
 .modal__btn:hover { opacity: 0.82; }
 .modal__btn--cancel { background: var(--color-ink-4); color: var(--color-ink-1); }
 .modal__btn--add    { background: var(--color-primary); color: var(--color-ink-1); }
+
+.modal__detail-content { font-family: var(--font-cjk); font-size: 14px; color: var(--color-ink-2); line-height: 1.8; white-space: pre-wrap; max-height: 60vh; overflow-y: auto; }
+.modal__detail-date { font-size: 12px; color: var(--color-ink-4); text-align: right; margin-top: var(--space-2); }
 
 @media (max-width: 767px) { .kanban { grid-template-columns: 1fr; } }
 </style>
