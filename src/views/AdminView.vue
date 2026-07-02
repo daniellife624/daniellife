@@ -694,11 +694,12 @@ async function saveModal(
         title: s('title'), organization: s('organization'),
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         contribution: s('contribution'),
+        photos: [] as string[],
       }
       if (isEdit) {
         replaceInList(experiences.value, await updateExperience(editId.value!, body))
       } else {
-        let created = await createExperience({ ...body, photos: [] })
+        let created = await createExperience(body)
         for (const file of pendingMultiFiles) {
           if (file) created = await uploadExperiencePhoto(created.id, file)
         }
@@ -823,11 +824,12 @@ async function saveModal(
         activities: s('activities') || undefined,
         purchases: s('purchases') || undefined,
         journal: s('journal') || undefined,
+        photos: [] as string[],
       }
       if (isEdit) {
         replaceInList(travelEntries.value, await updateTravelEntry(editId.value!, body))
       } else {
-        let created = await createTravelEntry({ ...body, photos: [] })
+        let created = await createTravelEntry(body)
         for (const file of pendingMultiFiles) {
           if (file) created = await uploadTravelPhoto(created.id, file)
         }
