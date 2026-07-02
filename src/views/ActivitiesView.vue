@@ -89,6 +89,7 @@ import 'leaflet/dist/leaflet.css'
 import * as topojson from 'topojson-client'
 import { getExperiences, getTravelEntries, groupByContinent } from '@/api/activities'
 import type { Experience, TravelEntry, Continent } from '@/types/activities'
+import { COUNTRY_CODES } from '@/data/travelData'
 import ExperienceCard from '@/components/activities/ExperienceCard.vue'
 import ExperienceModal from '@/components/activities/ExperienceModal.vue'
 import TravelEntryModal from '@/components/activities/TravelEntryModal.vue'
@@ -125,13 +126,6 @@ async function onEntrySubmitted() {
   continents.value = groupByContinent(entries)
   if (leafletMap) { leafletMap.remove(); leafletMap = null }
   await initMap(entries)
-}
-
-const COUNTRY_CODES: Record<string, number> = {
-  '臺灣': 158, '台灣': 158,
-  '日本': 392, '澳大利亞': 36, '美國': 840, '英國': 826,
-  '法國': 250, '德國': 276, '韓國': 410, '中國': 156,
-  '泰國': 764, '新加坡': 702, '義大利': 380, '西班牙': 724, '加拿大': 124,
 }
 
 async function initMap(entries: TravelEntry[]) {
@@ -182,6 +176,15 @@ onMounted(async () => {
   const entries = await getTravelEntries()
   continents.value = groupByContinent(entries)
   await initMap(entries)
+
+  if (mapEl.value) {
+    mapEl.value.addEventListener('wheel', (e: WheelEvent) => {
+      if (!leafletMap || !e.ctrlKey) return
+      e.preventDefault()
+      if (e.deltaY < 0) leafletMap.zoomIn()
+      else leafletMap.zoomOut()
+    }, { passive: false })
+  }
 })
 
 onUnmounted(() => { leafletMap?.remove(); leafletMap = null })

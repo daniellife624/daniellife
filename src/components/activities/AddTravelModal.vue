@@ -23,12 +23,37 @@
           </div>
           <div class="add-modal__row">
             <div class="add-modal__icon">時</div>
-            <input class="add-modal__input" placeholder="詳細的時間點？（e.g. 2024-03）" v-model="form.visitedAt" />
+            <input class="add-modal__input" placeholder="詳細的時間點？（e.g. 2024-03-15）" v-model="form.visitedAt" />
           </div>
-          <div class="add-modal__row">
-            <div class="add-modal__icon">地</div>
-            <input class="add-modal__input" placeholder="哪個國家？" v-model="form.country" />
-            <input class="add-modal__input" placeholder="哪座城市？" v-model="form.city" />
+          <div class="add-modal__row add-modal__row--col">
+            <div class="add-modal__row add-modal__row--inner">
+              <div class="add-modal__icon">地</div>
+              <select class="add-modal__select" v-model="form.country" @change="form.city = ''">
+                <option value="" disabled>選擇國家</option>
+                <option v-for="c in countryList" :key="c.name" :value="c.name">{{ c.name }}</option>
+                <option value="__other__">其他（手動輸入）</option>
+              </select>
+            </div>
+            <input
+              v-if="form.country === '__other__'"
+              class="add-modal__input add-modal__input--indent"
+              placeholder="請輸入國家名稱"
+              v-model="form.customCountry"
+            />
+            <div class="add-modal__row add-modal__row--inner" v-if="form.country && form.country !== '__other__'">
+              <div class="add-modal__icon add-modal__icon--sm">城</div>
+              <select class="add-modal__select" v-model="form.city">
+                <option value="" disabled>選擇城市</option>
+                <option v-for="city in cityList" :key="city" :value="city">{{ city }}</option>
+                <option value="__other__">其他（手動輸入）</option>
+              </select>
+            </div>
+            <input
+              v-if="form.country !== '__other__' && form.city === '__other__'"
+              class="add-modal__input add-modal__input--indent"
+              placeholder="請輸入城市名稱"
+              v-model="form.customCity"
+            />
           </div>
           <div class="add-modal__row">
             <div class="add-modal__icon">物</div>
@@ -49,15 +74,19 @@
         </div>
         <input ref="photoInputEl" type="file" accept="image/*" style="display:none" @change="onPhotoChange" />
 
-        <button class="add-modal__submit" @click="submit">新增旅行日記</button>
+        <p v-if="submitError" class="add-modal__error">{{ submitError }}</p>
+        <button class="add-modal__submit" :disabled="submitting" @click="submit">
+          {{ submitting ? '新增中…' : '新增旅行日記' }}
+        </button>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { createTravelEntry, uploadTravelPhoto } from '@/api/activities'
+import { CONTINENT_COUNTRIES } from '@/data/travelData'
 import type { Continent } from '@/types/activities'
 
 const props = defineProps<{
@@ -76,17 +105,39 @@ const CONT_ZH: Record<string, string> = {
   Australia: '澳洲', Americas: '美洲',
 }
 
-const form = reactive({ companions: '', activities: '', visitedAt: '', country: '', city: '', purchases: '' })
+const form = reactive({
+  companions: '', activities: '', visitedAt: '',
+  country: '', customCountry: '',
+  city: '', customCity: '',
+  purchases: '',
+})
 const photoPreviews = ref<(string | null)[]>([null, null, null, null])
-const photoFiles = ref<(File | null)[]>([null, null, null, null])
-let currentSlot = 0
-const photoInputEl = ref<HTMLInputElement | null>(null)
+const photoFiles    = ref<(File | null)[]>([null, null, null, null])
+const submitting    = ref(false)
+const submitError   = ref('')
+let currentSlot     = 0
+const photoInputEl  = ref<HTMLInputElement | null>(null)
+
+const countryList = computed(() =>
+  props.continent ? (CONTINENT_COUNTRIES[props.continent.key] ?? []) : []
+)
+
+const cityList = computed(() => {
+  const found = countryList.value.find((c) => c.name === form.country)
+  return found?.cities ?? []
+})
 
 watch(() => props.continent, (val) => {
   if (!val) return
-  Object.assign(form, { companions: '', activities: '', visitedAt: '', country: '', city: '', purchases: '' })
+  Object.assign(form, {
+    companions: '', activities: '', visitedAt: '',
+    country: '', customCountry: '',
+    city: '', customCity: '',
+    purchases: '',
+  })
   photoPreviews.value = [null, null, null, null]
-  photoFiles.value = [null, null, null, null]
+  photoFiles.value    = [null, null, null, null]
+  submitError.value   = ''
 })
 
 function triggerPhoto(i: number) {
@@ -104,22 +155,35 @@ function onPhotoChange(e: Event) {
 
 async function submit() {
   if (!props.continent) return
-  const entry = await createTravelEntry({
-    country: form.country,
-    city: form.city,
-    continent: props.continent.key,
-    visitedAt: form.visitedAt,
-    companions: form.companions,
-    activities: form.activities,
-    purchases: form.purchases,
-    journal: '',
-    photos: [],
-  })
-  for (const file of photoFiles.value) {
-    if (file) await uploadTravelPhoto(entry.id, file)
+  const country = form.country === '__other__' ? form.customCountry.trim() : form.country
+  const city    = form.city    === '__other__' ? form.customCity.trim()    : form.city
+  if (!country) { submitError.value = '請選擇或輸入國家'; return }
+  if (!city)    { submitError.value = '請選擇或輸入城市'; return }
+  if (!form.visitedAt.trim()) { submitError.value = '請填入造訪時間'; return }
+
+  submitting.value  = true
+  submitError.value = ''
+  try {
+    const entry = await createTravelEntry({
+      country, city,
+      continent: props.continent.key,
+      visitedAt: form.visitedAt.trim(),
+      companions: form.companions || undefined,
+      activities: form.activities || undefined,
+      purchases:  form.purchases  || undefined,
+      journal: '',
+      photos: [],
+    })
+    for (const file of photoFiles.value) {
+      if (file) await uploadTravelPhoto(entry.id, file)
+    }
+    emit('submitted')
+    emit('close')
+  } catch (err) {
+    submitError.value = err instanceof Error ? err.message : '新增失敗，請再試一次'
+  } finally {
+    submitting.value = false
   }
-  emit('submitted')
-  emit('close')
 }
 </script>
 
@@ -157,6 +221,8 @@ async function submit() {
 .add-modal {
   max-width: 500px;
   width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
 }
@@ -180,6 +246,8 @@ async function submit() {
 .add-modal__fields { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .add-modal__row { display: flex; align-items: center; gap: var(--space-2); }
+.add-modal__row--col { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.add-modal__row--inner { display: flex; align-items: center; gap: var(--space-2); }
 
 .add-modal__icon {
   width: 32px;
@@ -194,6 +262,12 @@ async function submit() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.add-modal__icon--sm {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 .add-modal__input {
@@ -211,6 +285,28 @@ async function submit() {
 
 .add-modal__input:focus { border-bottom-color: var(--accent, #3b82f6); }
 .add-modal__input::placeholder { color: var(--color-ink-3); }
+.add-modal__input--indent { margin-left: 40px; }
+
+.add-modal__select {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid var(--color-ink-4);
+  outline: none;
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: var(--color-ink-1);
+  padding: 5px 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 20px;
+}
+
+.add-modal__select:focus { border-bottom-color: var(--accent, #3b82f6); }
 
 .add-modal__photos {
   display: grid;
@@ -231,10 +327,15 @@ async function submit() {
 }
 
 .add-modal__photo-slot:hover { border-color: var(--accent, #3b82f6); }
-
 .add-modal__photo-add { font-size: 28px; color: var(--color-ink-4); line-height: 1; }
-
 .add-modal__photo-img { width: 100%; height: 100%; object-fit: cover; }
+
+.add-modal__error {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+}
 
 .add-modal__submit {
   width: 100%;
@@ -250,5 +351,6 @@ async function submit() {
   transition: opacity 0.2s;
 }
 
-.add-modal__submit:hover { opacity: 0.88; }
+.add-modal__submit:hover:not(:disabled) { opacity: 0.88; }
+.add-modal__submit:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
