@@ -58,6 +58,7 @@
                 </li>
               </ul>
               <button
+                v-if="auth.isLoggedIn"
                 class="continent-card__btn"
                 :class="`continent-card__btn--${cont.key.toLowerCase()}`"
                 @click="openAddEntry(cont)"
@@ -84,6 +85,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import * as topojson from 'topojson-client'
@@ -95,6 +97,7 @@ import ExperienceModal from '@/components/activities/ExperienceModal.vue'
 import TravelEntryModal from '@/components/activities/TravelEntryModal.vue'
 import AddTravelModal from '@/components/activities/AddTravelModal.vue'
 
+const auth = useAuthStore()
 const experiences = ref<Experience[]>([])
 const activeModal = ref<Experience | null>(null)
 const activeTravelEntry = ref<TravelEntry | null>(null)
