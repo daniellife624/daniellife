@@ -127,8 +127,8 @@
       <AdminTable
         v-if="current === 'certgroups'"
         title="財會/資訊證照"
-        :columns="['領域', '類別', '項目數']"
-        :rows="certGroups.map(g => [g.domain, g.category, String(g.items.length)])"
+        :columns="['領域', '類別', '證照名稱']"
+        :rows="certGroups.map(g => [g.domain, g.category, g.items.at(0) ?? ''])"
         :ids="certGroups.map(g => g.id)"
         draggable
         @add="openAdd"
@@ -395,7 +395,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   certgroups: [
     { key: 'domain',   label: '領域', options: ['財會', '資訊'] },
     { key: 'category', label: '類別', options: ['國內', '國外'] },
-    { key: 'items',    label: '證照項目（每行一條）', type: 'textarea' },
+    { key: 'name',     label: '證照名稱' },
   ],
   travel: [
     { key: 'country',    label: '國家' },
@@ -523,7 +523,7 @@ function openEdit(id: number) {
     Object.assign(fd, {
       domain: domainLabel, category: item.category,
       _sortOrder: String(item.sortOrder),
-      items: item.items.join('\n'),
+      name: item.items.at(0) ?? '',
     })
   } else if (current.value === 'travel') {
     const item = travelEntries.value.find((t) => t.id === id)!
@@ -628,7 +628,7 @@ function validateForm(fd: Record<string, string>): string {
   } else if (current.value === 'certgroups') {
     if (!['財會', '資訊'].includes(s('domain'))) return '「領域」須為 財會 或 資訊'
     if (!['國內', '國外'].includes(s('category'))) return '「類別」須為 國內 或 國外'
-    if (!s('items').trim()) return '「證照項目」至少要有一條'
+    if (!s('name').trim()) return '「證照名稱」不可空白'
   } else if (current.value === 'travel') {
     if (!s('country').trim()) return '「國家」不可空白'
     if (!s('city').trim()) return '「城市」不可空白'
@@ -807,7 +807,7 @@ async function saveModal(
       const body = {
         domain: s('domain') as CertGroupAdmin['domain'],
         category: s('category'),
-        items: s('items').split('\n').map((f) => f.trim()).filter(Boolean),
+        items: [s('name').trim()],
         sortOrder: isEdit ? (Number(fd['_sortOrder']) || 0) : certGroups.value.length + 1,
       }
       if (isEdit) {
