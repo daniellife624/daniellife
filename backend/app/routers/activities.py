@@ -98,7 +98,7 @@ def update_experience(item_id: int, body: s.ExperienceIn, db: Session = Depends(
     start, end = _parse_period(body.period)
     obj.type = body.type; obj.title = body.title; obj.organization = body.organization
     obj.start_date = start; obj.end_date = end
-    obj.contribution = body.contribution; obj.photos = json.dumps(body.photos)
+    obj.contribution = body.contribution
     db.commit(); db.refresh(obj)
     return _exp_to_out(obj)
 
@@ -139,7 +139,6 @@ def update_travel(item_id: int, body: s.TravelEntryIn, db: Session = Depends(get
     obj.visited_at = _parse_date(body.visitedAt)
     obj.journal = body.journal; obj.companions = body.companions
     obj.activities = body.activities; obj.purchases = body.purchases
-    obj.photos = json.dumps(body.photos)
     db.commit(); db.refresh(obj)
     return _travel_to_out(obj)
 
