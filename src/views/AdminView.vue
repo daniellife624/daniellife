@@ -979,8 +979,7 @@ async function handleReorder(fromIndex: number, toIndex: number) {
 
   function move<T>(arr: T[]): T[] {
     const copy = [...arr]
-    const [item] = copy.splice(fromIndex, 1)
-    copy.splice(toIndex, 0, item)
+    copy.splice(toIndex, 0, ...copy.splice(fromIndex, 1))
     return copy
   }
 
