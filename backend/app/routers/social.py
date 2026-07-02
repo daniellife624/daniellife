@@ -74,7 +74,6 @@ def update_social(item_id: int, body: SocialActivityIn, db: Session = Depends(ge
     obj.period_from = _parse_date(body.periodFrom)
     obj.period_to = _parse_date(body.periodTo) if body.periodTo else None
     obj.contribution = body.contribution; obj.reflection = body.reflection
-    obj.photo_url = body.photoUrl
     db.commit(); db.refresh(obj)
     return _to_out(obj)
 
