@@ -110,6 +110,13 @@ class ProjectIn(BaseModel):
             raise ValueError('「成員人數」須為正整數')
         return v
 
+    @field_validator('responsibility')
+    @classmethod
+    def responsibility_length(cls, v: str) -> str:
+        if len(v) > 100:
+            raise ValueError('「主要職責」不可超過 100 字')
+        return v
+
     @field_validator('period')
     @classmethod
     def period_format(cls, v: str) -> str:

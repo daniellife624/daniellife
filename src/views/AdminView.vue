@@ -313,7 +313,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'name',       label: '名稱' },
     { key: 'type',       label: '類型（可複選）', options: ['code', 'uiux', 'finance'], multi: true },
     { key: 'tech',       label: '使用技術/工具' },
-    { key: 'responsibility', label: '主要職責', type: 'textarea', placeholder: '例：負責前端全站開發與 UI/UX 設計' },
+    { key: 'responsibility', label: '主要職責（100字以內）', type: 'textarea', placeholder: '例：負責前端全站開發與 UI/UX 設計', maxLength: 100 },
     { key: 'members',    label: '成員人數', type: 'number' },
     { key: 'periodFrom', label: '開始年月', placeholder: '例：2025/07' },
     { key: 'periodTo',   label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
@@ -322,10 +322,10 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'youtubeUrl', label: 'YouTube 連結（可空）' },
     { key: 'otherUrl',   label: '其他連結（可空，如 PDF / 網頁）' },
     { key: 'createdAt',  label: '建立日期', placeholder: 'YYYY-MM-DD（用於排序：由新到舊）' },
-    { key: 'starS',      label: 'STAR — S 情境', type: 'textarea' },
-    { key: 'starT',      label: 'STAR — T 任務', type: 'textarea' },
-    { key: 'starA',      label: 'STAR — A 行動', type: 'textarea' },
-    { key: 'starR',      label: 'STAR — R 結果', type: 'textarea' },
+    { key: 'starS',      label: 'STAR — S 情境（150字以內）', type: 'textarea', maxLength: 150 },
+    { key: 'starT',      label: 'STAR — T 任務（150字以內）', type: 'textarea', maxLength: 150 },
+    { key: 'starA',      label: 'STAR — A 行動（150字以內）', type: 'textarea', maxLength: 150 },
+    { key: 'starR',      label: 'STAR — R 結果（150字以內）', type: 'textarea', maxLength: 150 },
   ],
   activities: [
     { key: 'type',         label: '類型', placeholder: 'leadership / club' },
@@ -581,7 +581,11 @@ function validateForm(fd: Record<string, string>): string {
     if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
     if (!MONTH_OR_JIUJIN(s('periodTo'))) return '「結束年月」格式須為 YYYY/MM，或填「至今」，或留空'
     if (!s('core').trim()) return '「核心功能」不可空白'
+    if (s('responsibility').length > 100) return '「主要職責」不可超過 100 字'
     if (s('createdAt') && !DATE.test(s('createdAt'))) return '「建立日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    for (const [key, label] of [['starS', 'S 情境'], ['starT', 'T 任務'], ['starA', 'A 行動'], ['starR', 'R 結果']] as const) {
+      if (s(key).length > 150) return `「STAR — ${label}」不可超過 150 字`
+    }
   } else if (current.value === 'activities') {
     if (!['leadership', 'club'].includes(s('type'))) return '「類型」須為 leadership 或 club'
     if (!s('title').trim()) return '「標題」不可空白'

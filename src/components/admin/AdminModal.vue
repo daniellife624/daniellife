@@ -10,12 +10,17 @@
         <div class="modal__fields">
           <label v-for="field in fields" :key="field.key" class="modal__label">
             {{ field.label }}
-            <textarea
-              v-if="field.type === 'textarea'"
-              v-model="localFormData[field.key]"
-              class="modal__textarea"
-              rows="3"
-            ></textarea>
+            <template v-if="field.type === 'textarea'">
+              <textarea
+                v-model="localFormData[field.key]"
+                class="modal__textarea"
+                rows="3"
+                :maxlength="field.maxLength"
+              ></textarea>
+              <span v-if="field.maxLength" class="modal__char-count">
+                {{ (localFormData[field.key] ?? '').length }} / {{ field.maxLength }}
+              </span>
+            </template>
             <div v-else-if="field.options && field.multi" class="modal__radio-group">
               <button
                 v-for="opt in field.options"
@@ -139,7 +144,7 @@
 import { ref, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
 
-export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean }
+export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean; maxLength?: number }
 
 const props = defineProps<{
   open: boolean
@@ -283,6 +288,13 @@ function handleSave() {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-ink-2);
+}
+
+.modal__char-count {
+  align-self: flex-end;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-ink-3);
 }
 
 .modal__input,

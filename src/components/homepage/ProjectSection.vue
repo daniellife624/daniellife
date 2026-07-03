@@ -353,10 +353,6 @@ const filteredProjects = computed(() => {
   font-size: 12px;
   color: var(--color-ink-2);
   line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 @media (max-width: 767px) {
