@@ -31,6 +31,7 @@
               <h4 class="sticky-card__title">{{ idea.title }}</h4>
               <div class="sticky-card__actions">
                 <button class="sticky-card__expand" @click.stop="selectedIdea = idea">展開</button>
+                <button class="sticky-card__expand" @click.stop="openEdit(idea)">編輯</button>
                 <button class="sticky-card__del" @click.stop="deleteIdea(idea.id)">×</button>
               </div>
             </div>
@@ -74,18 +75,41 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Edit Idea Modal -->
+    <Teleport to="body">
+      <div v-if="editingIdea" class="modal-backdrop" @click.self="editingIdea = null">
+        <div class="modal">
+          <button class="modal__close" @click="editingIdea = null">×</button>
+          <h3 class="modal__title">編輯便利貼</h3>
+          <label class="modal__label">
+            標題
+            <input v-model="editingIdea.title" class="modal__input" type="text" placeholder="想法標題" />
+          </label>
+          <label class="modal__label">
+            內容
+            <textarea v-model="editingIdea.content" class="modal__textarea" rows="4" placeholder="詳細描述這個研究方向…"></textarea>
+          </label>
+          <div class="modal__actions">
+            <button class="modal__btn modal__btn--cancel" @click="editingIdea = null">取消</button>
+            <button class="modal__btn modal__btn--add" @click="submitEdit">儲存</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getThesisIdeas, addThesisIdea, updateIdeaStatus, deleteThesisIdea } from '@/api/thesis'
+import { getThesisIdeas, addThesisIdea, updateIdeaStatus, updateThesisIdea, deleteThesisIdea } from '@/api/thesis'
 import type { ThesisIdea, IdeaStatus } from '@/types/thesis'
 
 const ideas       = ref<ThesisIdea[]>([])
 const selectedIdea = ref<ThesisIdea | null>(null)
+const editingIdea  = ref<{ id: number; title: string; content: string } | null>(null)
 const kanbanCols: { status: IdeaStatus; label: string }[] = [
-  { status: 'pending',  label: '待確認（重量提）' },
+  { status: 'pending',  label: '待確認' },
   { status: 'rejected', label: '被拒絕 / 不可執行' },
   { status: 'approved', label: '可以執行' },
 ]
@@ -103,6 +127,20 @@ async function changeStatus(id: number, status: IdeaStatus) {
 async function deleteIdea(id: number) {
   await deleteThesisIdea(id)
   ideas.value = ideas.value.filter((i) => i.id !== id)
+}
+
+function openEdit(idea: ThesisIdea) {
+  editingIdea.value = { id: idea.id, title: idea.title, content: idea.content }
+}
+
+async function submitEdit() {
+  if (!editingIdea.value || !editingIdea.value.content.trim()) return
+  const { id, title, content } = editingIdea.value
+  const updated = await updateThesisIdea(id, { title, content })
+  const idea = ideas.value.find((i) => i.id === id)
+  if (idea) { idea.title = updated.title; idea.content = updated.content }
+  if (selectedIdea.value?.id === id) { selectedIdea.value = idea ?? selectedIdea.value }
+  editingIdea.value = null
 }
 
 const draggingId  = ref<number | null>(null)

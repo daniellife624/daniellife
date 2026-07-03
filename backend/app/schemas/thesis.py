@@ -66,12 +66,21 @@ class ThesisIdeaIn(BaseModel):
 
 
 class ThesisIdeaUpdate(BaseModel):
-    status: str
+    title: Optional[str] = None
+    content: Optional[str] = None
+    status: Optional[str] = None
+
+    @field_validator('content')
+    @classmethod
+    def content_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError('「內容」不可空白')
+        return v
 
     @field_validator('status')
     @classmethod
-    def status_choices(cls, v: str) -> str:
-        if v not in ('pending', 'approved', 'rejected'):
+    def status_choices(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ('pending', 'approved', 'rejected'):
             raise ValueError('「狀態」須為 pending / approved / rejected')
         return v
 

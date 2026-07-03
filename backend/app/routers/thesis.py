@@ -49,11 +49,16 @@ def create_idea(body: ThesisIdeaIn, db: Session = Depends(get_db), _=Depends(get
 
 
 @router.patch("/ideas/{item_id}", response_model=ThesisIdeaOut)
-def update_idea_status(item_id: int, body: ThesisIdeaUpdate, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def update_idea(item_id: int, body: ThesisIdeaUpdate, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = db.query(ThesisIdea).filter(ThesisIdea.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    obj.status = body.status
+    if body.title is not None:
+        obj.title = body.title
+    if body.content is not None:
+        obj.content = body.content
+    if body.status is not None:
+        obj.status = body.status
     db.commit(); db.refresh(obj)
     return ThesisIdeaOut.from_orm_row(obj)
 

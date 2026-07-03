@@ -30,6 +30,13 @@ export async function updateIdeaStatus(id: number, status: ThesisIdea['status'])
   })
 }
 
+export async function updateThesisIdea(id: number, body: { title: string; content: string }): Promise<ThesisIdea> {
+  return apiFetch<ThesisIdea>(`/api/thesis/ideas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
 export async function deleteThesisIdea(id: number): Promise<void> {
   await apiFetch(`/api/thesis/ideas/${id}`, { method: 'DELETE' })
 }
