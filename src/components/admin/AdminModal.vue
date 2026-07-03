@@ -16,6 +16,16 @@
               class="modal__textarea"
               rows="3"
             ></textarea>
+            <div v-else-if="field.options && field.multi" class="modal__radio-group">
+              <button
+                v-for="opt in field.options"
+                :key="opt"
+                type="button"
+                class="modal__radio-btn"
+                :class="{ 'modal__radio-btn--active': multiValues(field.key).includes(opt) }"
+                @click="toggleMultiOption(field.key, opt)"
+              >{{ opt }}</button>
+            </div>
             <div v-else-if="field.options" class="modal__radio-group">
               <button
                 v-for="opt in field.options"
@@ -129,7 +139,7 @@
 import { ref, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
 
-export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[] }
+export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean }
 
 const props = defineProps<{
   open: boolean
@@ -173,6 +183,18 @@ watch(() => props.open, (newOpen) => {
   pendingSingleFile.value    = null
   pendingSinglePreview.value = ''
 })
+
+function multiValues(key: string): string[] {
+  return (localFormData.value[key] ?? '').split(',').map((v) => v.trim()).filter(Boolean)
+}
+
+function toggleMultiOption(key: string, opt: string) {
+  const current = multiValues(key)
+  const idx = current.indexOf(opt)
+  if (idx >= 0) current.splice(idx, 1)
+  else current.push(opt)
+  localFormData.value[key] = current.join(',')
+}
 
 function triggerPendingPhoto(slot: number) {
   pendingPhotoSlot = slot

@@ -41,7 +41,6 @@
           v-for="proj in filteredProjects"
           :key="proj.id"
           class="project-card"
-          :class="`project-card--${proj.type}`"
         >
           <div class="project-card__header">
             <h3 class="project-card__name">{{ proj.name }}</h3>
@@ -53,8 +52,18 @@
               <a v-if="proj.youtubeUrl" :href="proj.youtubeUrl" target="_blank" class="project-card__link-icon" title="YouTube">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.54 3.6 12 3.6 12 3.6s-7.54 0-9.38.47A3.02 3.02 0 0 0 .5 6.2C0 8.05 0 12 0 12s0 3.95.5 5.8a3.02 3.02 0 0 0 2.12 2.14C4.46 20.4 12 20.4 12 20.4s7.54 0 9.38-.46a3.02 3.02 0 0 0 2.12-2.14C24 15.95 24 12 24 12s0-3.95-.5-5.8zM9.6 15.6V8.4l6.27 3.6-6.27 3.6z"/></svg>
               </a>
+              <a v-if="proj.otherUrl" :href="proj.otherUrl" target="_blank" class="project-card__link-icon" title="其他連結">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </a>
             </div>
-            <span class="project-card__badge" :class="`project-card__badge--${proj.type}`">{{ typeLabel[proj.type] }}</span>
+            <div class="project-card__badges">
+              <span
+                v-for="t in typesOf(proj)"
+                :key="t"
+                class="project-card__badge"
+                :class="`project-card__badge--${t}`"
+              >{{ typeLabel[t] }}</span>
+            </div>
           </div>
 
           <div class="project-card__core">
@@ -79,7 +88,7 @@
 
           <div class="project-card__star">
             <div v-for="s in proj.star" :key="s.label" class="project-card__star-item">
-              <span class="project-card__star-badge" :class="`project-card__star-badge--${proj.type}`">{{ s.label }}</span>
+              <span class="project-card__star-badge" :class="`project-card__star-badge--${typesOf(proj)[0] ?? 'code'}`">{{ s.label }}</span>
               <p class="project-card__star-text">{{ s.text }}</p>
             </div>
           </div>
@@ -101,13 +110,17 @@ const allProjects = ref<Project[]>([])
 
 const typeLabel: Record<string, string> = { code: '程式', uiux: 'UIUX', finance: '財會' }
 
+function typesOf(p: Project): string[] {
+  return p.type.split(',').map((t) => t.trim()).filter(Boolean)
+}
+
 onMounted(async () => {
   allProjects.value = await getProjects()
 })
 
 const filteredProjects = computed(() => {
   return allProjects.value.filter((p) => {
-    if (filterType.value && p.type !== filterType.value) return false
+    if (filterType.value && !typesOf(p).includes(filterType.value)) return false
     if (filterKeyword.value && !p.tech.includes(filterKeyword.value)) return false
     if (filterMembers.value === 'small' && p.members > 5) return false
     if (filterMembers.value === 'mid' && (p.members < 6 || p.members > 10)) return false
@@ -189,6 +202,7 @@ const filteredProjects = computed(() => {
 }
 
 .project-card {
+  background: var(--color-white);
   border: 1px solid var(--color-ink-4);
   border-radius: var(--radius-md);
   padding: var(--space-5);
@@ -196,10 +210,6 @@ const filteredProjects = computed(() => {
   flex-direction: column;
   gap: var(--space-4);
 }
-
-.project-card--code    { background: var(--color-white); }
-.project-card--uiux    { background: var(--color-primary-bg); }
-.project-card--finance { background: #eef1ec; }
 
 /* ── Card Header ── */
 .project-card__header {
@@ -245,6 +255,12 @@ const filteredProjects = computed(() => {
 .project-card__link-icon:hover {
   color: var(--color-ink-1);
   border-color: var(--color-ink-2);
+}
+
+.project-card__badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 .project-card__badge {
@@ -310,7 +326,7 @@ const filteredProjects = computed(() => {
 .project-card__star-item {
   display: flex;
   gap: var(--space-2);
-  align-items: flex-start;
+  align-items: center;
 }
 
 .project-card__star-badge {
@@ -323,7 +339,6 @@ const filteredProjects = computed(() => {
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .project-card__star-badge--code    { background: var(--color-secondary); color: #fff; }

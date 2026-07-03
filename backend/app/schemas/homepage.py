@@ -67,6 +67,7 @@ class ProjectOut(BaseModel):
     core: str
     githubUrl: Optional[str] = None
     youtubeUrl: Optional[str] = None
+    otherUrl: Optional[str] = None
     star: list[StarItemOut] = []
     createdAt: str
 
@@ -74,13 +75,14 @@ class ProjectOut(BaseModel):
 class ProjectIn(BaseModel):
     name: str
     type: str
-    techLabel: str = "使用技術"
+    techLabel: str = "主要職責"
     tech: str = ""
     members: int = 1
     period: str = ""
     core: str = ""
     githubUrl: Optional[str] = None
     youtubeUrl: Optional[str] = None
+    otherUrl: Optional[str] = None
     star: list[StarItemOut] = []
     createdAt: str = ""
 

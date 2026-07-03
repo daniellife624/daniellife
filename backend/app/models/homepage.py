@@ -18,14 +18,15 @@ class Project(Base):
     __tablename__ = "projects"
     id          = Column(Integer, primary_key=True)
     name        = Column(String(200), nullable=False)
-    type        = Column(String(20), nullable=False)   # code | uiux | finance
-    tech_label  = Column(String(100), nullable=False, default="使用技術")
+    type        = Column(String(20), nullable=False)   # comma-separated subset of code|uiux|finance
+    tech_label  = Column(String(100), nullable=False, default="主要職責")
     tech        = Column(String(500), nullable=False, default="")
     members     = Column(Integer, default=1)
     period      = Column(String(50), nullable=False, default="")
     core        = Column(String(200), nullable=False, default="")
     github_url  = Column(String(500), nullable=True)
     youtube_url = Column(String(500), nullable=True)
+    other_url   = Column(String(500), nullable=True)
     star        = Column(Text, default="[]")           # JSON: [{label, text}, ...]
     created_at  = Column(String(20), nullable=False, default="")
 

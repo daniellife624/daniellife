@@ -311,16 +311,17 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   ],
   projects: [
     { key: 'name',       label: '名稱' },
-    { key: 'type',       label: '類型', placeholder: 'code / uiux / finance' },
-    { key: 'techLabel',  label: '技術標籤', placeholder: '使用技術 / 使用軟體' },
-    { key: 'tech',       label: '技術/工具' },
+    { key: 'type',       label: '類型（可複選）', options: ['code', 'uiux', 'finance'], multi: true },
+    { key: 'techLabel',  label: '欄位標題', placeholder: '主要職責' },
+    { key: 'tech',       label: '主要職責內容', placeholder: '例：負責前端全站開發與 UI/UX 設計' },
     { key: 'members',    label: '成員人數', type: 'number' },
     { key: 'periodFrom', label: '開始年月', placeholder: '例：2025/07' },
     { key: 'periodTo',   label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
     { key: 'core',       label: '核心功能（20字）' },
     { key: 'githubUrl',  label: 'GitHub 連結（可空）' },
     { key: 'youtubeUrl', label: 'YouTube 連結（可空）' },
-    { key: 'createdAt',  label: '建立日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'otherUrl',   label: '其他連結（可空，如 PDF / 網頁）' },
+    { key: 'createdAt',  label: '建立日期', placeholder: 'YYYY-MM-DD（用於排序：由新到舊）' },
     { key: 'starS',      label: 'STAR — S 情境', type: 'textarea' },
     { key: 'starT',      label: 'STAR — T 任務', type: 'textarea' },
     { key: 'starA',      label: 'STAR — A 行動', type: 'textarea' },
@@ -454,6 +455,7 @@ function openEdit(id: number) {
       periodFrom: period.from, periodTo: period.to,
       core: item.core,
       githubUrl: item.githubUrl ?? '', youtubeUrl: item.youtubeUrl ?? '',
+      otherUrl: item.otherUrl ?? '',
       createdAt: item.createdAt,
       starS: item.star.find((s) => s.label === 'S')?.text ?? '',
       starT: item.star.find((s) => s.label === 'T')?.text ?? '',
@@ -569,7 +571,11 @@ function validateForm(fd: Record<string, string>): string {
     if (!s('contribution').trim()) return '「主要貢獻」不可空白'
   } else if (current.value === 'projects') {
     if (!s('name').trim()) return '「名稱」不可空白'
-    if (!['code', 'uiux', 'finance'].includes(s('type'))) return '「類型」須為 code / uiux / finance'
+    {
+      const types = s('type').split(',').map((t) => t.trim()).filter(Boolean)
+      if (types.length === 0 || !types.every((t) => ['code', 'uiux', 'finance'].includes(t)))
+        return '「類型」至少選擇一項，且須為 code / uiux / finance'
+    }
     if (!Number.isInteger(Number(s('members'))) || Number(s('members')) < 1) return '「成員人數」須為正整數'
     if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
     if (!MONTH_OR_JIUJIN(s('periodTo'))) return '「結束年月」格式須為 YYYY/MM，或填「至今」，或留空'
@@ -674,12 +680,13 @@ async function saveModal(
         .map((l) => ({ label: l, text: s(`star${l}`) }))
         .filter((item) => item.text.trim())
       const body = {
-        name: s('name'), type: s('type') as Project['type'],
-        techLabel: s('techLabel') || '使用技術', tech: s('tech'),
+        name: s('name'), type: s('type'),
+        techLabel: s('techLabel') || '主要職責', tech: s('tech'),
         members: Number(s('members')) || 1,
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         core: s('core'),
         githubUrl: s('githubUrl') || undefined, youtubeUrl: s('youtubeUrl') || undefined,
+        otherUrl: s('otherUrl') || undefined,
         star, createdAt: s('createdAt'),
       }
       if (isEdit) {

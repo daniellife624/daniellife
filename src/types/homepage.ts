@@ -18,7 +18,7 @@ export type ProjectType = 'code' | 'uiux' | 'finance'
 export interface Project {
   id: number
   name: string
-  type: ProjectType
+  type: string // comma-separated ProjectType values, e.g. "code,finance"
   techLabel: string
   tech: string
   members: number
@@ -26,6 +26,7 @@ export interface Project {
   core: string
   githubUrl?: string
   youtubeUrl?: string
+  otherUrl?: string
   star: StarItem[]
   createdAt: string
 }
