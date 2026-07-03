@@ -94,8 +94,13 @@ class ThesisPaperOut(BaseModel):
     year: int
     purpose: str
     contribution: str
+    notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class ThesisPaperNotesIn(BaseModel):
+    notes: str = ""
 
 
 class ThesisPaperIn(BaseModel):

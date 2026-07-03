@@ -37,6 +37,7 @@
             <th class="col-author">Author, Year</th>
             <th class="col-purpose">研究目的（150字）</th>
             <th class="col-contribution">研究貢獻／影響／結果（200字／項目符號）</th>
+            <th class="col-notes">筆記</th>
           </tr>
         </thead>
         <tbody>
@@ -47,25 +48,39 @@
             <td class="paper-cell paper-cell--author">{{ p.authors }}, {{ p.year }}</td>
             <td class="paper-cell paper-cell--long">{{ p.purpose }}</td>
             <td class="paper-cell paper-cell--long">{{ p.contribution }}</td>
+            <td class="paper-cell paper-cell--notes">
+              <button class="note-btn" :class="{ 'note-btn--filled': p.notes }" @click="notePaper = p">
+                {{ p.notes ? '查看筆記' : '＋ 筆記' }}
+              </button>
+            </td>
           </tr>
           <tr v-if="!filteredPapers.length">
-            <td colspan="6" class="paper-cell paper-cell--empty">沒有符合的文獻</td>
+            <td colspan="7" class="paper-cell paper-cell--empty">沒有符合的文獻</td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <PaperNoteModal :paper="notePaper" @close="notePaper = null" @saved="onNotesSaved" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getThesisPapers } from '@/api/thesis'
+import PaperNoteModal from './PaperNoteModal.vue'
 import type { ThesisPaper } from '@/types/thesis'
 
 const allPapers    = ref<ThesisPaper[]>([])
 const paperKeyword = ref('')
 const filterTopic  = ref('')
 const filterJournal = ref('')
+const notePaper    = ref<ThesisPaper | null>(null)
+
+function onNotesSaved(updated: ThesisPaper) {
+  const idx = allPapers.value.findIndex((p) => p.id === updated.id)
+  if (idx !== -1) allPapers.value[idx] = updated
+}
 
 const topicOptions   = computed(() => [...new Set(allPapers.value.map((p) => p.topic))].filter(Boolean))
 const journalOptions = computed(() => [...new Set(allPapers.value.map((p) => p.journal))].filter(Boolean))
@@ -113,6 +128,7 @@ onMounted(async () => { allPapers.value = await getThesisPapers() })
 .col-author { min-width: 140px; white-space: nowrap; }
 .col-purpose { min-width: 200px; }
 .col-contribution { min-width: 220px; }
+.col-notes { width: 100px; }
 
 .paper-row:nth-child(even) { background: var(--color-primary-bg); }
 .paper-row:hover { background: rgba(232, 193, 58, 0.18); }
@@ -123,6 +139,11 @@ onMounted(async () => { allPapers.value = await getThesisPapers() })
 .paper-cell--author { white-space: nowrap; }
 .paper-cell--long { white-space: normal; }
 .paper-cell--empty { text-align: center; color: var(--color-ink-4); padding: var(--space-6) 0; }
+.paper-cell--notes { white-space: nowrap; }
+
+.note-btn { padding: var(--space-1) var(--space-3); border: 1px solid var(--color-ink-4); border-radius: var(--radius-sm); background: var(--color-white); font-family: var(--font-cjk); font-size: 12px; color: var(--color-ink-2); cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+.note-btn:hover { border-color: var(--color-ink-1); color: var(--color-ink-1); }
+.note-btn--filled { border-color: var(--color-primary); color: var(--color-ink-1); font-weight: 600; background: var(--color-primary-bg); }
 
 .topic-badge { padding: 2px 8px; background: var(--color-primary-bg); border: 1px solid var(--color-primary); border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; color: var(--color-ink-1); white-space: nowrap; }
 

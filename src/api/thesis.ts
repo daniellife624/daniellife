@@ -1,5 +1,7 @@
 import type { ThesisNote, ThesisIdea, ThesisPaper } from '@/types/thesis'
-import { apiFetch } from './client'
+import { apiFetch, getToken } from './client'
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export async function getThesisNote(): Promise<ThesisNote> {
   return apiFetch<ThesisNote>('/api/thesis/note')
@@ -61,4 +63,24 @@ export async function updateThesisPaper(id: number, body: Omit<ThesisPaper, 'id'
 }
 export async function deleteThesisPaper(id: number): Promise<void> {
   await apiFetch(`/api/thesis/papers/${id}`, { method: 'DELETE' })
+}
+
+export async function updatePaperNotes(id: number, notes: string): Promise<ThesisPaper> {
+  return apiFetch<ThesisPaper>(`/api/thesis/papers/${id}/notes`, {
+    method: 'PATCH',
+    body: JSON.stringify({ notes }),
+  })
+}
+
+export async function uploadPaperNoteImage(id: number, file: File): Promise<{ url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const token = getToken()
+  const res = await fetch(`${BASE_URL}/api/thesis/papers/${id}/notes/image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
 }

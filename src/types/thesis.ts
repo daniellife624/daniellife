@@ -22,4 +22,5 @@ export interface ThesisPaper {
   year: number
   purpose: string
   contribution: string
+  notes?: string | null
 }

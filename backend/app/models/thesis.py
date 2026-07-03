@@ -31,3 +31,4 @@ class ThesisPaper(Base):
     year = Column(Integer, nullable=False)
     purpose = Column(Text, nullable=False)
     contribution = Column(Text, nullable=False)
+    notes = Column(Text, nullable=True)                       # HTML content, may embed <img> tags
