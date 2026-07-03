@@ -58,7 +58,7 @@ def _intern_out(r: m.Internship) -> s.InternshipOut:
 def _project_out(r: m.Project) -> s.ProjectOut:
     return s.ProjectOut(
         id=r.id, name=r.name, type=r.type,
-        techLabel=r.tech_label, tech=r.tech, responsibility=r.responsibility,
+        techLabel=r.tech_label, tech=r.tech, responsibility=r.responsibility or "",
         members=r.members, period=r.period, core=r.core,
         githubUrl=r.github_url, youtubeUrl=r.youtube_url, otherUrl=r.other_url,
         star=json.loads(r.star) if r.star else [],
