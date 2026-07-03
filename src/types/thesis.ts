@@ -23,4 +23,5 @@ export interface ThesisPaper {
   purpose: string
   contribution: string
   notes?: string | null
+  notionUrl?: string | null
 }

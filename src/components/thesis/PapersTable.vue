@@ -31,28 +31,28 @@
       <table class="papers-table">
         <thead>
           <tr>
+            <th class="col-notes">筆記</th>
             <th class="col-topic">Topic</th>
             <th class="col-name">Name</th>
             <th class="col-journal">Journal</th>
             <th class="col-author">Author, Year</th>
             <th class="col-purpose">研究目的（150字）</th>
             <th class="col-contribution">研究貢獻／影響／結果（200字／項目符號）</th>
-            <th class="col-notes">筆記</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="p in filteredPapers" :key="p.id" class="paper-row">
+            <td class="paper-cell paper-cell--notes">
+              <button class="note-btn" :class="{ 'note-btn--filled': p.notes }" @click="notePaper = p">
+                {{ p.notes ? '查看筆記' : '尚無筆記' }}
+              </button>
+            </td>
             <td class="paper-cell"><span class="topic-badge">{{ p.topic }}</span></td>
             <td class="paper-cell paper-cell--name">{{ p.name }}</td>
             <td class="paper-cell paper-cell--journal">{{ p.journal }}</td>
             <td class="paper-cell paper-cell--author">{{ p.authors }}, {{ p.year }}</td>
             <td class="paper-cell paper-cell--long">{{ p.purpose }}</td>
             <td class="paper-cell paper-cell--long">{{ p.contribution }}</td>
-            <td class="paper-cell paper-cell--notes">
-              <button class="note-btn" :class="{ 'note-btn--filled': p.notes }" @click="notePaper = p">
-                {{ p.notes ? '查看筆記' : '＋ 筆記' }}
-              </button>
-            </td>
           </tr>
           <tr v-if="!filteredPapers.length">
             <td colspan="7" class="paper-cell paper-cell--empty">沒有符合的文獻</td>
@@ -61,7 +61,7 @@
       </table>
     </div>
 
-    <PaperNoteModal :paper="notePaper" @close="notePaper = null" @saved="onNotesSaved" />
+    <PaperNoteModal :paper="notePaper" @close="notePaper = null" />
   </section>
 </template>
 
@@ -76,11 +76,6 @@ const paperKeyword = ref('')
 const filterTopic  = ref('')
 const filterJournal = ref('')
 const notePaper    = ref<ThesisPaper | null>(null)
-
-function onNotesSaved(updated: ThesisPaper) {
-  const idx = allPapers.value.findIndex((p) => p.id === updated.id)
-  if (idx !== -1) allPapers.value[idx] = updated
-}
 
 const topicOptions   = computed(() => [...new Set(allPapers.value.map((p) => p.topic))].filter(Boolean))
 const journalOptions = computed(() => [...new Set(allPapers.value.map((p) => p.journal))].filter(Boolean))

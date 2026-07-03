@@ -1,7 +1,5 @@
 import type { ThesisNote, ThesisIdea, ThesisPaper } from '@/types/thesis'
-import { apiFetch, getToken } from './client'
-
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+import { apiFetch } from './client'
 
 export async function getThesisNote(): Promise<ThesisNote> {
   return apiFetch<ThesisNote>('/api/thesis/note')
@@ -65,22 +63,11 @@ export async function deleteThesisPaper(id: number): Promise<void> {
   await apiFetch(`/api/thesis/papers/${id}`, { method: 'DELETE' })
 }
 
-export async function updatePaperNotes(id: number, notes: string): Promise<ThesisPaper> {
-  return apiFetch<ThesisPaper>(`/api/thesis/papers/${id}/notes`, {
-    method: 'PATCH',
-    body: JSON.stringify({ notes }),
-  })
+export interface NotionSyncResult {
+  synced: number[]
+  failed: { id: number; name: string; error: string }[]
 }
 
-export async function uploadPaperNoteImage(id: number, file: File): Promise<{ url: string }> {
-  const form = new FormData()
-  form.append('file', file)
-  const token = getToken()
-  const res = await fetch(`${BASE_URL}/api/thesis/papers/${id}/notes/image`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  })
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
-  return res.json()
+export async function syncNotionPapers(): Promise<NotionSyncResult> {
+  return apiFetch<NotionSyncResult>('/api/thesis/papers/sync-notion', { method: 'POST' })
 }

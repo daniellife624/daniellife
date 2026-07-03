@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # Frontend origin (CORS)
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 
+    # Notion integration (paper notes sync)
+    NOTION_TOKEN: str = ""
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

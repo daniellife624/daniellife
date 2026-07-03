@@ -1,7 +1,5 @@
-import uuid
-from pathlib import Path as FsPath
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
@@ -9,15 +7,19 @@ from ..models.thesis import ThesisNote, ThesisIdea, ThesisPaper
 from ..schemas.thesis import (
     ThesisNoteOut, ThesisNoteIn,
     ThesisIdeaOut, ThesisIdeaIn, ThesisIdeaUpdate,
-    ThesisPaperOut, ThesisPaperIn, ThesisPaperNotesIn,
+    ThesisPaperOut, ThesisPaperIn,
 )
+from ..notion_sync import sync_paper_notes, NotionSyncError
 
 router = APIRouter(prefix="/thesis", tags=["thesis"])
 
-NOTE_IMG_DIR = FsPath(__file__).resolve().parent.parent.parent / "uploads" / "thesis_notes"
-NOTE_IMG_DIR.mkdir(parents=True, exist_ok=True)
-NOTE_IMG_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-NOTE_IMG_MAX_SIZE_MB = 10
+
+def _paper_out(r: ThesisPaper) -> ThesisPaperOut:
+    return ThesisPaperOut(
+        id=r.id, topic=r.topic, name=r.name, journal=r.journal, authors=r.authors,
+        year=r.year, purpose=r.purpose, contribution=r.contribution,
+        notes=r.notes, notionUrl=r.notion_url,
+    )
 
 
 # ── Note (singleton) ─────────────────────────────────────────────
@@ -98,7 +100,7 @@ def list_papers(
             ThesisPaper.authors.ilike(f"%{keyword}%") |
             ThesisPaper.purpose.ilike(f"%{keyword}%")
         )
-    return q.all()
+    return [_paper_out(r) for r in q.all()]
 
 
 @router.post("/papers", response_model=ThesisPaperOut)
@@ -106,9 +108,10 @@ def create_paper(body: ThesisPaperIn, db: Session = Depends(get_db), _=Depends(g
     obj = ThesisPaper(
         topic=body.topic, name=body.name, journal=body.journal, authors=body.authors,
         year=body.year, purpose=body.purpose, contribution=body.contribution,
+        notion_url=body.notionUrl,
     )
     db.add(obj); db.commit(); db.refresh(obj)
-    return obj
+    return _paper_out(obj)
 
 
 @router.put("/papers/{item_id}", response_model=ThesisPaperOut)
@@ -118,9 +121,9 @@ def update_paper(item_id: int, body: ThesisPaperIn, db: Session = Depends(get_db
         raise HTTPException(404, "Not found")
     obj.topic = body.topic; obj.name = body.name; obj.journal = body.journal
     obj.authors = body.authors; obj.year = body.year; obj.purpose = body.purpose
-    obj.contribution = body.contribution
+    obj.contribution = body.contribution; obj.notion_url = body.notionUrl
     db.commit(); db.refresh(obj)
-    return obj
+    return _paper_out(obj)
 
 
 @router.delete("/papers/{item_id}", status_code=204)
@@ -131,33 +134,19 @@ def delete_paper(item_id: int, db: Session = Depends(get_db), _=Depends(get_curr
     db.delete(obj); db.commit()
 
 
-# ── Paper notes (per-row rich note + pasted images) ────────────────
-@router.patch("/papers/{item_id}/notes", response_model=ThesisPaperOut)
-def update_paper_notes(item_id: int, body: ThesisPaperNotesIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
-    obj = db.query(ThesisPaper).filter(ThesisPaper.id == item_id).first()
-    if not obj:
-        raise HTTPException(404, "Not found")
-    obj.notes = body.notes
-    db.commit(); db.refresh(obj)
-    return obj
-
-
-@router.post("/papers/{item_id}/notes/image")
-async def upload_paper_note_image(
-    item_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    _=Depends(get_current_user),
-):
-    obj = db.query(ThesisPaper).filter(ThesisPaper.id == item_id).first()
-    if not obj:
-        raise HTTPException(404, "Not found")
-    if file.content_type not in NOTE_IMG_ALLOWED_TYPES:
-        raise HTTPException(400, f"不支援的檔案類型：{file.content_type}")
-    content = await file.read()
-    if len(content) > NOTE_IMG_MAX_SIZE_MB * 1024 * 1024:
-        raise HTTPException(400, f"檔案大小超過 {NOTE_IMG_MAX_SIZE_MB}MB 限制")
-    ext = FsPath(file.filename or "image.png").suffix.lower() or ".png"
-    filename = f"{item_id}_{uuid.uuid4().hex[:8]}{ext}"
-    (NOTE_IMG_DIR / filename).write_bytes(content)
-    return {"url": f"/uploads/thesis_notes/{filename}"}
+# ── Notion sync (paper notes) ───────────────────────────────────────
+@router.post("/papers/sync-notion")
+def sync_notion(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    papers = db.query(ThesisPaper).filter(ThesisPaper.notion_url.isnot(None), ThesisPaper.notion_url != "").all()
+    synced: list[int] = []
+    failed: list[dict] = []
+    for p in papers:
+        try:
+            p.notes = sync_paper_notes(p.notion_url, p.id)
+            synced.append(p.id)
+        except NotionSyncError as e:
+            failed.append({"id": p.id, "name": p.name, "error": str(e)})
+        except Exception as e:
+            failed.append({"id": p.id, "name": p.name, "error": f"未預期的錯誤：{e}"})
+    db.commit()
+    return {"synced": synced, "failed": failed}

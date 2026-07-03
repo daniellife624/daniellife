@@ -31,4 +31,5 @@ class ThesisPaper(Base):
     year = Column(Integer, nullable=False)
     purpose = Column(Text, nullable=False)
     contribution = Column(Text, nullable=False)
-    notes = Column(Text, nullable=True)                       # HTML content, may embed <img> tags
+    notes = Column(Text, nullable=True)                       # HTML content synced from Notion, may embed <img> tags
+    notion_url = Column(String(500), nullable=True)           # source Notion page URL for sync

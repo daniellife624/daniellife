@@ -65,6 +65,13 @@
         @delete="deleteItem"
       />
 
+      <div v-if="current === 'papers'" class="notion-sync-bar">
+        <button class="notion-sync-btn" :disabled="notionSyncing" @click="runNotionSync">
+          {{ notionSyncing ? '同步中…' : '🔄 同步 Notion 筆記' }}
+        </button>
+        <span v-if="notionSyncMsg" class="notion-sync-msg">{{ notionSyncMsg }}</span>
+      </div>
+
       <AdminTable
         v-if="current === 'papers'"
         title="論文文獻"
@@ -205,7 +212,7 @@ import {
   getLiteratureWorks, createLiteratureWork, updateLiteratureWork, deleteLiteratureWork,
 } from '@/api/literature'
 import {
-  getThesisPapers, createThesisPaper, updateThesisPaper, deleteThesisPaper,
+  getThesisPapers, createThesisPaper, updateThesisPaper, deleteThesisPaper, syncNotionPapers,
 } from '@/api/thesis'
 import {
   getHoldings, createHolding, updateHolding, deleteHolding,
@@ -250,6 +257,26 @@ const experiences      = ref<Experience[]>([])
 const socialActivities = ref<SocialActivity[]>([])
 const literatureWorks  = ref<LiteratureWork[]>([])
 const papers           = ref<ThesisPaper[]>([])
+const notionSyncing    = ref(false)
+const notionSyncMsg    = ref('')
+
+async function runNotionSync() {
+  notionSyncing.value = true
+  notionSyncMsg.value = ''
+  try {
+    const result = await syncNotionPapers()
+    papers.value = await getThesisPapers()
+    const parts = [`成功同步 ${result.synced.length} 篇`]
+    if (result.failed.length) {
+      parts.push(`失敗 ${result.failed.length} 篇：${result.failed.map((f) => `${f.name}（${f.error}）`).join('；')}`)
+    }
+    notionSyncMsg.value = parts.join('，')
+  } catch (e) {
+    notionSyncMsg.value = e instanceof Error ? e.message : '同步失敗'
+  } finally {
+    notionSyncing.value = false
+  }
+}
 const holdings         = ref<Holding[]>([])
 const academics        = ref<AcademicMilestone[]>([])
 const futurePlans      = ref<FuturePlan[]>([])
@@ -361,6 +388,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'year',         label: '年份', type: 'number' },
     { key: 'purpose',      label: '研究目的', type: 'textarea' },
     { key: 'contribution', label: '主要貢獻', type: 'textarea' },
+    { key: 'notionUrl',    label: 'Notion 筆記頁面連結（可空）', placeholder: 'https://notion.so/...' },
   ],
   holdings: [
     { key: 'symbol',      label: '股票代碼' },
@@ -491,6 +519,7 @@ function openEdit(id: number) {
       topic: item.topic, name: item.name, journal: item.journal,
       authors: item.authors, year: String(item.year),
       purpose: item.purpose, contribution: item.contribution,
+      notionUrl: item.notionUrl ?? '',
     })
   } else if (current.value === 'holdings') {
     const item = holdings.value.find((h) => h.id === id)!
@@ -757,6 +786,7 @@ async function saveModal(
         topic: s('topic'), name: s('name'), journal: s('journal'),
         authors: s('authors'), year: Number(s('year')) || new Date().getFullYear(),
         purpose: s('purpose'), contribution: s('contribution'),
+        notionUrl: s('notionUrl') || undefined,
       }
       if (isEdit) {
         replaceInList(papers.value, await updateThesisPaper(editId.value!, body))
@@ -1069,5 +1099,33 @@ function logout() {
   padding: var(--space-7) var(--space-6);
   background: #f7f7f5;
   overflow-y: auto;
+}
+
+.notion-sync-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.notion-sync-btn {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-ink-1);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.notion-sync-btn:hover:not(:disabled) { opacity: 0.82; }
+.notion-sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.notion-sync-msg {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: var(--color-ink-2);
 }
 </style>

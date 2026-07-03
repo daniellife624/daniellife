@@ -95,12 +95,9 @@ class ThesisPaperOut(BaseModel):
     purpose: str
     contribution: str
     notes: Optional[str] = None
+    notionUrl: Optional[str] = None
 
     model_config = {"from_attributes": True}
-
-
-class ThesisPaperNotesIn(BaseModel):
-    notes: str = ""
 
 
 class ThesisPaperIn(BaseModel):
@@ -111,6 +108,7 @@ class ThesisPaperIn(BaseModel):
     year: int
     purpose: str
     contribution: str
+    notionUrl: Optional[str] = None
 
     @field_validator('name', 'journal', 'authors', 'purpose', 'contribution')
     @classmethod
