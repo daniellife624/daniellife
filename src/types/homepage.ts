@@ -21,6 +21,7 @@ export interface Project {
   type: string // comma-separated ProjectType values, e.g. "code,finance"
   techLabel: string
   tech: string
+  responsibility: string
   members: number
   period: string
   core: string

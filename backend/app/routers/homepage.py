@@ -58,7 +58,7 @@ def _intern_out(r: m.Internship) -> s.InternshipOut:
 def _project_out(r: m.Project) -> s.ProjectOut:
     return s.ProjectOut(
         id=r.id, name=r.name, type=r.type,
-        techLabel=r.tech_label, tech=r.tech,
+        techLabel=r.tech_label, tech=r.tech, responsibility=r.responsibility,
         members=r.members, period=r.period, core=r.core,
         githubUrl=r.github_url, youtubeUrl=r.youtube_url, otherUrl=r.other_url,
         star=json.loads(r.star) if r.star else [],
@@ -160,7 +160,7 @@ def list_projects(db: Session = Depends(get_db)):
 def create_project(body: s.ProjectIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = m.Project(
         name=body.name, type=body.type, tech_label=body.techLabel,
-        tech=body.tech, members=body.members, period=body.period,
+        tech=body.tech, responsibility=body.responsibility, members=body.members, period=body.period,
         core=body.core, github_url=body.githubUrl, youtube_url=body.youtubeUrl,
         other_url=body.otherUrl,
         star=json.dumps([item.model_dump() for item in body.star], ensure_ascii=False),
@@ -176,7 +176,8 @@ def update_project(item_id: int, body: s.ProjectIn, db: Session = Depends(get_db
     if not obj:
         raise HTTPException(404, "Not found")
     obj.name = body.name; obj.type = body.type; obj.tech_label = body.techLabel
-    obj.tech = body.tech; obj.members = body.members; obj.period = body.period
+    obj.tech = body.tech; obj.responsibility = body.responsibility
+    obj.members = body.members; obj.period = body.period
     obj.core = body.core; obj.github_url = body.githubUrl; obj.youtube_url = body.youtubeUrl
     obj.other_url = body.otherUrl
     obj.star = json.dumps([item.model_dump() for item in body.star], ensure_ascii=False)

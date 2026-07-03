@@ -76,6 +76,10 @@
               <td class="project-card__td-key">{{ proj.techLabel }}</td>
               <td class="project-card__td-val">{{ proj.tech }}</td>
             </tr>
+            <tr v-if="proj.responsibility">
+              <td class="project-card__td-key">主要職責</td>
+              <td class="project-card__td-val">{{ proj.responsibility }}</td>
+            </tr>
             <tr>
               <td class="project-card__td-key">參與專案人數</td>
               <td class="project-card__td-val">{{ proj.members }}</td>

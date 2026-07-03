@@ -19,8 +19,9 @@ class Project(Base):
     id          = Column(Integer, primary_key=True)
     name        = Column(String(200), nullable=False)
     type        = Column(String(20), nullable=False)   # comma-separated subset of code|uiux|finance
-    tech_label  = Column(String(100), nullable=False, default="主要職責")
+    tech_label  = Column(String(100), nullable=False, default="使用技術")
     tech        = Column(String(500), nullable=False, default="")
+    responsibility = Column(Text, nullable=False, default="")   # 主要職責
     members     = Column(Integer, default=1)
     period      = Column(String(50), nullable=False, default="")
     core        = Column(String(200), nullable=False, default="")

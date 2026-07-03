@@ -62,6 +62,7 @@ class ProjectOut(BaseModel):
     type: str
     techLabel: str
     tech: str
+    responsibility: str = ""
     members: int
     period: str
     core: str
@@ -75,8 +76,9 @@ class ProjectOut(BaseModel):
 class ProjectIn(BaseModel):
     name: str
     type: str
-    techLabel: str = "主要職責"
+    techLabel: str = "使用技術"
     tech: str = ""
+    responsibility: str = ""
     members: int = 1
     period: str = ""
     core: str = ""
@@ -96,8 +98,9 @@ class ProjectIn(BaseModel):
     @field_validator('type')
     @classmethod
     def type_choices(cls, v: str) -> str:
-        if v not in ('code', 'uiux', 'finance'):
-            raise ValueError('「type」須為 code / uiux / finance')
+        types = [t.strip() for t in v.split(',') if t.strip()]
+        if not types or not all(t in ('code', 'uiux', 'finance') for t in types):
+            raise ValueError('「type」須至少選擇一項，且須為 code / uiux / finance')
         return v
 
     @field_validator('members')

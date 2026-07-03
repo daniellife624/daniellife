@@ -312,8 +312,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   projects: [
     { key: 'name',       label: '名稱' },
     { key: 'type',       label: '類型（可複選）', options: ['code', 'uiux', 'finance'], multi: true },
-    { key: 'techLabel',  label: '欄位標題', placeholder: '主要職責' },
-    { key: 'tech',       label: '主要職責內容', placeholder: '例：負責前端全站開發與 UI/UX 設計' },
+    { key: 'tech',       label: '使用技術/工具' },
+    { key: 'responsibility', label: '主要職責', type: 'textarea', placeholder: '例：負責前端全站開發與 UI/UX 設計' },
     { key: 'members',    label: '成員人數', type: 'number' },
     { key: 'periodFrom', label: '開始年月', placeholder: '例：2025/07' },
     { key: 'periodTo',   label: '結束年月（留空視為「至今」）', placeholder: '例：2025/08 或 至今' },
@@ -451,6 +451,7 @@ function openEdit(id: number) {
     Object.assign(fd, {
       name: item.name, type: item.type,
       techLabel: item.techLabel, tech: item.tech,
+      responsibility: item.responsibility,
       members: String(item.members),
       periodFrom: period.from, periodTo: period.to,
       core: item.core,
@@ -681,7 +682,8 @@ async function saveModal(
         .filter((item) => item.text.trim())
       const body = {
         name: s('name'), type: s('type'),
-        techLabel: s('techLabel') || '主要職責', tech: s('tech'),
+        techLabel: s('techLabel') || '使用技術', tech: s('tech'),
+        responsibility: s('responsibility'),
         members: Number(s('members')) || 1,
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         core: s('core'),
