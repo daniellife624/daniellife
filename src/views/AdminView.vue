@@ -65,17 +65,6 @@
         @delete="deleteItem"
       />
 
-      <AdminTable
-        v-if="current === 'timeline'"
-        title="文學時間軸"
-        :columns="['年級標籤', '獎項名稱', '結果', '日期', '對應作品']"
-        :rows="timelineEvents.map(e => [e.gradeLabel, e.awardTitle, e.result, e.date, literatureWorks.find(w => w.id === e.workId)?.title ?? '（無）'])"
-        :ids="timelineEvents.map(e => e.id)"
-        @add="openAdd"
-        @edit="openEdit"
-        @delete="deleteItem"
-      />
-
       <div v-if="current === 'papers'" class="notion-sync-bar">
         <button class="notion-sync-btn" :disabled="notionSyncing" @click="runNotionSync">
           {{ notionSyncing ? '同步中…' : '🔄 同步 Notion 筆記' }}
@@ -221,7 +210,6 @@ import {
 } from '@/api/social'
 import {
   getLiteratureWorks, createLiteratureWork, updateLiteratureWork, deleteLiteratureWork,
-  getTimelineEvents, createTimelineEvent, updateTimelineEvent, deleteTimelineEvent,
 } from '@/api/literature'
 import {
   getThesisPapers, createThesisPaper, updateThesisPaper, deleteThesisPaper, syncNotionPapers,
@@ -232,7 +220,7 @@ import {
 import type { Internship, Project, AcademicMilestone, FuturePlan, LangCertAdmin, CertGroupAdmin } from '@/types/homepage'
 import type { Experience, TravelEntry } from '@/types/activities'
 import type { SocialActivity, SdgNumber } from '@/types/social'
-import type { LiteratureWork, TimelineEvent } from '@/types/literature'
+import type { LiteratureWork } from '@/types/literature'
 import type { ThesisPaper } from '@/types/thesis'
 import type { Holding } from '@/types/finance'
 
@@ -241,7 +229,7 @@ const auth = useAuthStore()
 
 type SectionKey =
   | 'internships' | 'projects' | 'activities' | 'social'
-  | 'literature' | 'timeline' | 'papers' | 'holdings'
+  | 'literature' | 'papers' | 'holdings'
   | 'academic' | 'futureplans' | 'langcerts' | 'certgroups' | 'travel'
 
 const sections: { key: SectionKey; label: string }[] = [
@@ -250,7 +238,6 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: 'activities',  label: '課外活動' },
   { key: 'social',      label: '社會參與' },
   { key: 'literature',  label: '文學作品' },
-  { key: 'timeline',    label: '文學時間軸' },
   { key: 'papers',      label: '論文文獻' },
   { key: 'holdings',    label: '持股明細' },
   { key: 'academic',    label: '求學歷程' },
@@ -269,7 +256,6 @@ const projects         = ref<Project[]>([])
 const experiences      = ref<Experience[]>([])
 const socialActivities = ref<SocialActivity[]>([])
 const literatureWorks  = ref<LiteratureWork[]>([])
-const timelineEvents   = ref<TimelineEvent[]>([])
 const papers           = ref<ThesisPaper[]>([])
 const notionSyncing    = ref(false)
 const notionSyncMsg    = ref('')
@@ -310,7 +296,6 @@ onMounted(async () => {
     experiences.value,
     socialActivities.value,
     literatureWorks.value,
-    timelineEvents.value,
     papers.value,
     holdings.value,
     academics.value,
@@ -324,7 +309,6 @@ onMounted(async () => {
     getExperiences(),
     getSocialActivities(),
     getLiteratureWorks(),
-    getTimelineEvents(),
     getThesisPapers(),
     getHoldings(),
     getAcademicMilestones(),
@@ -343,7 +327,7 @@ const modalInitialFormData = ref<Record<string, string>>({})
 const saving               = ref(false)
 const saveError            = ref('')
 
-const fieldMap = computed<Record<SectionKey, FieldDef[]>>(() => ({
+const fieldMap: Record<SectionKey, FieldDef[]> = {
   internships: [
     { key: 'company',      label: '公司' },
     { key: 'dept',         label: '部門' },
@@ -394,19 +378,10 @@ const fieldMap = computed<Record<SectionKey, FieldDef[]>>(() => ({
     { key: 'ageWritten', label: '撰寫年齡', type: 'number' },
     { key: 'period',     label: '頒發日期', placeholder: 'YYYY.MM' },
     { key: 'issuer',     label: '頒發單位' },
+    { key: 'gradeLabel', label: '年級標籤（選填，填寫後自動加入首頁時間軸）', placeholder: '例：小學 / 五年級' },
     { key: 'awards',     label: '得獎紀錄' },
     { key: 'summary',    label: '摘要', type: 'textarea' },
     { key: 'fullText',   label: '全文（可空）', type: 'textarea' },
-  ],
-  timeline: [
-    { key: 'gradeLabel', label: '年級標籤', placeholder: '例：小學 / 五年級' },
-    { key: 'awardTitle', label: '獎項名稱' },
-    { key: 'result',     label: '結果', placeholder: '例：第一名' },
-    { key: 'date',       label: '日期', placeholder: 'YYYY-MM-DD' },
-    {
-      key: 'workId', label: '對應文學作品（可留空）',
-      selectOptions: [{ value: '', label: '（無對應作品）' }, ...literatureWorks.value.map((w) => ({ value: String(w.id), label: w.title }))],
-    },
   ],
   papers: [
     { key: 'topic',        label: '研究主題' },
@@ -464,9 +439,9 @@ const fieldMap = computed<Record<SectionKey, FieldDef[]>>(() => ({
     { key: 'purchases',  label: '購物（可空）' },
     { key: 'journal',    label: '日記（可空）', type: 'textarea' },
   ],
-}))
+}
 
-const modalFields = computed<FieldDef[]>(() => fieldMap.value[current.value] ?? [])
+const modalFields = computed<FieldDef[]>(() => fieldMap[current.value] ?? [])
 
 function parsePeriod(period: string): { from: string; to: string } {
   const parts = period.split('–').map((p) => p.trim())
@@ -483,7 +458,7 @@ function openAdd() {
   modalMode.value = 'add'
   editId.value = null
   saveError.value = ''
-  modalInitialFormData.value = Object.fromEntries(fieldMap.value[current.value].map((f) => [f.key, '']))
+  modalInitialFormData.value = Object.fromEntries(fieldMap[current.value].map((f) => [f.key, '']))
   modalOpen.value = true
 }
 
@@ -539,14 +514,8 @@ function openEdit(id: number) {
     Object.assign(fd, {
       title: item.title, category: item.category ?? '',
       ageWritten: item.ageWritten ? String(item.ageWritten) : '',
-      period: item.period ?? '', issuer: item.issuer ?? '', awards: item.awards,
-      summary: item.summary, fullText: item.fullText ?? '',
-    })
-  } else if (current.value === 'timeline') {
-    const item = timelineEvents.value.find((e) => e.id === id)!
-    Object.assign(fd, {
-      gradeLabel: item.gradeLabel, awardTitle: item.awardTitle, result: item.result,
-      date: item.date, workId: item.workId != null ? String(item.workId) : '',
+      period: item.period ?? '', issuer: item.issuer ?? '', gradeLabel: item.gradeLabel ?? '',
+      awards: item.awards, summary: item.summary, fullText: item.fullText ?? '',
     })
   } else if (current.value === 'papers') {
     const item = papers.value.find((p) => p.id === id)!
@@ -670,11 +639,8 @@ function validateForm(fd: Record<string, string>): string {
       return '「分類標籤」須為 小說 / 散文 / 新詩'
     if (s('ageWritten') && (isNaN(Number(s('ageWritten'))) || Number(s('ageWritten')) < 1))
       return '「撰寫年齡」須為正整數'
-  } else if (current.value === 'timeline') {
-    if (!s('gradeLabel').trim()) return '「年級標籤」不可空白'
-    if (!s('awardTitle').trim()) return '「獎項名稱」不可空白'
-    if (!s('result').trim()) return '「結果」不可空白'
-    if (!DATE.test(s('date'))) return '「日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    if (s('gradeLabel').trim() && !s('period').trim())
+      return '「年級標籤」需要搭配「頒發日期」才能自動加入時間軸'
   } else if (current.value === 'papers') {
     if (!s('topic').trim()) return '「研究主題」不可空白'
     if (!s('name').trim()) return '「論文名稱」不可空白'
@@ -814,6 +780,7 @@ async function saveModal(
         title: s('title'), category: s('category') || undefined,
         ageWritten: s('ageWritten') ? Number(s('ageWritten')) : undefined,
         period: s('period') || undefined, issuer: s('issuer') || undefined,
+        gradeLabel: s('gradeLabel') || undefined,
         awards: s('awards'), summary: s('summary'),
         fullText: s('fullText') || undefined,
       }
@@ -821,17 +788,6 @@ async function saveModal(
         replaceInList(literatureWorks.value, await updateLiteratureWork(editId.value!, body))
       } else {
         literatureWorks.value.push(await createLiteratureWork(body))
-      }
-
-    } else if (current.value === 'timeline') {
-      const body = {
-        gradeLabel: s('gradeLabel'), awardTitle: s('awardTitle'), result: s('result'),
-        date: s('date'), workId: s('workId') ? Number(s('workId')) : undefined,
-      }
-      if (isEdit) {
-        replaceInList(timelineEvents.value, await updateTimelineEvent(editId.value!, body))
-      } else {
-        timelineEvents.value.push(await createTimelineEvent(body))
       }
 
     } else if (current.value === 'papers') {
@@ -1115,8 +1071,6 @@ async function deleteItem(id: number) {
       await deleteSocialActivity(id); socialActivities.value = socialActivities.value.filter((a) => a.id !== id)
     } else if (current.value === 'literature') {
       await deleteLiteratureWork(id); literatureWorks.value = literatureWorks.value.filter((w) => w.id !== id)
-    } else if (current.value === 'timeline') {
-      await deleteTimelineEvent(id); timelineEvents.value = timelineEvents.value.filter((e) => e.id !== id)
     } else if (current.value === 'papers') {
       await deleteThesisPaper(id); papers.value = papers.value.filter((p) => p.id !== id)
     } else if (current.value === 'holdings') {

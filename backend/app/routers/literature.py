@@ -29,7 +29,7 @@ def _work_to_out(r) -> LiteratureWorkOut:
     return LiteratureWorkOut(
         id=r.id, title=r.title, ageWritten=r.age_written,
         period=r.period.strftime("%Y.%m") if r.period else None,
-        issuer=r.issuer, category=r.category,
+        issuer=r.issuer, category=r.category, gradeLabel=r.grade_label,
         awards=r.awards or "", summary=r.summary, fullText=r.full_text,
     )
 
@@ -41,6 +41,23 @@ def _event_to_out(r) -> TimelineEventOut:
         date=r.date.strftime("%Y.%m.%d") if r.date else "",
         workId=r.work_id,
     )
+
+
+def _sync_timeline_for_work(db: Session, work: LiteratureWork, grade_label: str | None) -> None:
+    """有填 grade_label 且有頒發日期時，自動建立/更新對應的時間軸事件；否則移除既有的自動事件。"""
+    existing = db.query(TimelineEvent).filter(TimelineEvent.work_id == work.id).first()
+    if grade_label and work.period:
+        if existing:
+            existing.grade_label = grade_label
+            existing.award_title = work.awards
+            existing.date = work.period
+        else:
+            db.add(TimelineEvent(
+                grade_label=grade_label, award_title=work.awards, result="",
+                date=work.period, work_id=work.id,
+            ))
+    elif existing:
+        db.delete(existing)
 
 
 # ── Works ─────────────────────────────────────────────────────────
@@ -55,10 +72,12 @@ def create_work(body: LiteratureWorkIn, db: Session = Depends(get_db), _=Depends
     obj = LiteratureWork(
         title=body.title, age_written=body.ageWritten,
         period=_parse_date(body.period) if body.period else None,
-        issuer=body.issuer, category=body.category,
+        issuer=body.issuer, category=body.category, grade_label=body.gradeLabel,
         awards=body.awards, summary=body.summary, full_text=body.fullText,
     )
     db.add(obj); db.commit(); db.refresh(obj)
+    _sync_timeline_for_work(db, obj, body.gradeLabel)
+    db.commit()
     return _work_to_out(obj)
 
 
@@ -69,8 +88,9 @@ def update_work(item_id: int, body: LiteratureWorkIn, db: Session = Depends(get_
         raise HTTPException(404, "Not found")
     obj.title = body.title; obj.age_written = body.ageWritten
     obj.period = _parse_date(body.period) if body.period else None
-    obj.issuer = body.issuer; obj.category = body.category
+    obj.issuer = body.issuer; obj.category = body.category; obj.grade_label = body.gradeLabel
     obj.awards = body.awards; obj.summary = body.summary; obj.full_text = body.fullText
+    _sync_timeline_for_work(db, obj, body.gradeLabel)
     db.commit(); db.refresh(obj)
     return _work_to_out(obj)
 
@@ -80,7 +100,7 @@ def delete_work(item_id: int, db: Session = Depends(get_db), _=Depends(get_curre
     obj = db.query(LiteratureWork).filter(LiteratureWork.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    db.query(TimelineEvent).filter(TimelineEvent.work_id == item_id).update({TimelineEvent.work_id: None})
+    db.query(TimelineEvent).filter(TimelineEvent.work_id == item_id).delete()
     db.delete(obj); db.commit()
 
 

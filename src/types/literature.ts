@@ -14,6 +14,7 @@ export interface LiteratureWork {
   period?: string
   issuer?: string
   category?: string
+  gradeLabel?: string
   awards: string
   summary: string
   fullText?: string

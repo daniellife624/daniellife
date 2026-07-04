@@ -14,6 +14,7 @@ class LiteratureWorkOut(BaseModel):
     period: Optional[str] = None        # "YYYY.MM"，頒發日期
     issuer: Optional[str] = None        # 頒發單位
     category: Optional[str] = None      # 小說 / 散文 / 新詩
+    gradeLabel: Optional[str] = None    # 年級標籤，有填才會自動帶出時間軸事件
     awards: str = ""
     summary: str
     fullText: Optional[str] = None
@@ -25,6 +26,7 @@ class LiteratureWorkIn(BaseModel):
     period: Optional[str] = None        # "YYYY-MM" or "YYYY.MM" — parsed server-side
     issuer: Optional[str] = None
     category: Optional[str] = None
+    gradeLabel: Optional[str] = None
     awards: str = ""
     summary: str
     fullText: Optional[str] = None
