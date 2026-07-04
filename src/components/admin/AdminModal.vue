@@ -41,6 +41,13 @@
                 @click="localFormData[field.key] = opt"
               >{{ opt }}</button>
             </div>
+            <select
+              v-else-if="field.selectOptions"
+              v-model="localFormData[field.key]"
+              class="modal__input"
+            >
+              <option v-for="opt in field.selectOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
             <input
               v-else
               v-model="localFormData[field.key]"
@@ -144,7 +151,11 @@
 import { ref, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
 
-export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean; maxLength?: number }
+export type FieldDef = {
+  key: string; label: string; type?: string; placeholder?: string
+  options?: string[]; multi?: boolean; maxLength?: number
+  selectOptions?: { value: string; label: string }[]
+}
 
 const props = defineProps<{
   open: boolean

@@ -12,6 +12,8 @@ export interface LiteratureWork {
   title: string
   ageWritten?: number
   period?: string
+  issuer?: string
+  category?: string
   awards: string
   summary: string
   fullText?: string

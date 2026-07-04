@@ -8,7 +8,9 @@ class LiteratureWork(Base):
     id          = Column(Integer, primary_key=True, index=True)
     title       = Column(String(200), nullable=False)
     age_written = Column(Integer, nullable=True)
-    period      = Column(Date, nullable=True)       # stored as date, serialized to "YYYY.MM"
+    period      = Column(Date, nullable=True)       # 頒發日期, stored as date, serialized to "YYYY.MM"
+    issuer      = Column(String(200), nullable=True)  # 頒發單位
+    category    = Column(String(20), nullable=True)   # 小說 | 散文 | 新詩
     awards      = Column(Text, nullable=False, default="")
     summary     = Column(Text, nullable=False)
     full_text   = Column(Text, nullable=True)

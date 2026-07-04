@@ -4,6 +4,19 @@ import { apiFetch } from './client'
 export async function getTimelineEvents(): Promise<TimelineEvent[]> {
   return apiFetch<TimelineEvent[]>('/api/literature/timeline')
 }
+export async function createTimelineEvent(body: Omit<TimelineEvent, 'id'>): Promise<TimelineEvent> {
+  return apiFetch<TimelineEvent>('/api/literature/timeline', {
+    method: 'POST', body: JSON.stringify(body),
+  })
+}
+export async function updateTimelineEvent(id: number, body: Omit<TimelineEvent, 'id'>): Promise<TimelineEvent> {
+  return apiFetch<TimelineEvent>(`/api/literature/timeline/${id}`, {
+    method: 'PUT', body: JSON.stringify(body),
+  })
+}
+export async function deleteTimelineEvent(id: number): Promise<void> {
+  await apiFetch(`/api/literature/timeline/${id}`, { method: 'DELETE' })
+}
 
 export async function getLiteratureWorks(): Promise<LiteratureWork[]> {
   return apiFetch<LiteratureWork[]>('/api/literature/works')

@@ -11,7 +11,9 @@ class LiteratureWorkOut(BaseModel):
     id: int
     title: str
     ageWritten: Optional[int] = None
-    period: Optional[str] = None        # "YYYY.MM"
+    period: Optional[str] = None        # "YYYY.MM"，頒發日期
+    issuer: Optional[str] = None        # 頒發單位
+    category: Optional[str] = None      # 小說 / 散文 / 新詩
     awards: str = ""
     summary: str
     fullText: Optional[str] = None
@@ -21,6 +23,8 @@ class LiteratureWorkIn(BaseModel):
     title: str
     ageWritten: Optional[int] = None
     period: Optional[str] = None        # "YYYY-MM" or "YYYY.MM" — parsed server-side
+    issuer: Optional[str] = None
+    category: Optional[str] = None
     awards: str = ""
     summary: str
     fullText: Optional[str] = None
@@ -43,8 +47,15 @@ class LiteratureWorkIn(BaseModel):
     @classmethod
     def period_format(cls, v: Optional[str]) -> Optional[str]:
         if v and not _PERIOD_RE.match(v.strip()):
-            raise ValueError('「撰寫期間」格式須為 YYYY.MM 或 YYYY/MM')
+            raise ValueError('「頒發日期」格式須為 YYYY.MM 或 YYYY/MM')
         return v.strip() if v else None
+
+    @field_validator('category')
+    @classmethod
+    def category_choices(cls, v: Optional[str]) -> Optional[str]:
+        if v and v not in ('小說', '散文', '新詩'):
+            raise ValueError('「分類標籤」須為 小說 / 散文 / 新詩')
+        return v or None
 
 
 class TimelineEventOut(BaseModel):

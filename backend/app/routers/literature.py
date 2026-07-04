@@ -29,6 +29,7 @@ def _work_to_out(r) -> LiteratureWorkOut:
     return LiteratureWorkOut(
         id=r.id, title=r.title, ageWritten=r.age_written,
         period=r.period.strftime("%Y.%m") if r.period else None,
+        issuer=r.issuer, category=r.category,
         awards=r.awards or "", summary=r.summary, fullText=r.full_text,
     )
 
@@ -45,7 +46,8 @@ def _event_to_out(r) -> TimelineEventOut:
 # ── Works ─────────────────────────────────────────────────────────
 @router.get("/works", response_model=list[LiteratureWorkOut])
 def list_works(db: Session = Depends(get_db)):
-    return [_work_to_out(r) for r in db.query(LiteratureWork).all()]
+    rows = db.query(LiteratureWork).order_by(LiteratureWork.period.desc()).all()
+    return [_work_to_out(r) for r in rows]
 
 
 @router.post("/works", response_model=LiteratureWorkOut)
@@ -53,6 +55,7 @@ def create_work(body: LiteratureWorkIn, db: Session = Depends(get_db), _=Depends
     obj = LiteratureWork(
         title=body.title, age_written=body.ageWritten,
         period=_parse_date(body.period) if body.period else None,
+        issuer=body.issuer, category=body.category,
         awards=body.awards, summary=body.summary, full_text=body.fullText,
     )
     db.add(obj); db.commit(); db.refresh(obj)
@@ -66,6 +69,7 @@ def update_work(item_id: int, body: LiteratureWorkIn, db: Session = Depends(get_
         raise HTTPException(404, "Not found")
     obj.title = body.title; obj.age_written = body.ageWritten
     obj.period = _parse_date(body.period) if body.period else None
+    obj.issuer = body.issuer; obj.category = body.category
     obj.awards = body.awards; obj.summary = body.summary; obj.full_text = body.fullText
     db.commit(); db.refresh(obj)
     return _work_to_out(obj)

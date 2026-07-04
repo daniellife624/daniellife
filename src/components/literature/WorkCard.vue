@@ -2,6 +2,7 @@
   <div class="work-card" :data-work-id="work.id">
     <div class="work-card__header">
       <h3 class="work-card__title">{{ work.title }}</h3>
+      <span v-if="work.category" class="work-card__category">{{ work.category }}</span>
       <button v-if="work.fullText" class="work-card__read-btn" @click="showFull = true">閱讀全文</button>
     </div>
     <div class="work-card__row">
@@ -9,8 +10,12 @@
       <span class="work-card__val work-card__val--yellow">{{ work.ageWritten }}歲</span>
     </div>
     <div class="work-card__row">
-      <span class="work-card__label">撰寫期間</span>
+      <span class="work-card__label">頒發日期</span>
       <span class="work-card__val work-card__val--yellow">{{ work.period }}</span>
+    </div>
+    <div v-if="work.issuer" class="work-card__row">
+      <span class="work-card__label">頒發單位</span>
+      <span class="work-card__val work-card__val--yellow">{{ work.issuer }}</span>
     </div>
     <div class="work-card__row">
       <span class="work-card__label">得獎紀錄</span>
@@ -18,7 +23,12 @@
     </div>
     <div class="work-card__row">
       <span class="work-card__label">摘要文字</span>
-      <span class="work-card__val work-card__val--green">{{ work.summary }}</span>
+      <span
+        class="work-card__val work-card__val--green"
+        :class="{ 'work-card__val--clickable': isSummaryLong }"
+        :title="isSummaryLong ? '點擊查看完整摘要' : undefined"
+        @click="isSummaryLong && (showSummary = true)"
+      >{{ truncatedSummary }}</span>
     </div>
   </div>
 
@@ -35,13 +45,34 @@
       </div>
     </div>
   </Teleport>
+
+  <Teleport to="body">
+    <div v-if="showSummary" class="fulltext-backdrop" @click.self="showSummary = false">
+      <div class="fulltext-modal">
+        <div class="fulltext-modal__header">
+          <h3 class="fulltext-modal__title">{{ work.title }} — 摘要</h3>
+          <button class="fulltext-modal__close" @click="showSummary = false">×</button>
+        </div>
+        <div class="fulltext-modal__body">
+          <pre class="fulltext-modal__text">{{ work.summary }}</pre>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { LiteratureWork } from '@/types/literature'
-defineProps<{ work: LiteratureWork }>()
+const props = defineProps<{ work: LiteratureWork }>()
 const showFull = ref(false)
+const showSummary = ref(false)
+
+const SUMMARY_LIMIT = 60
+const isSummaryLong = computed(() => props.work.summary.length > SUMMARY_LIMIT)
+const truncatedSummary = computed(() =>
+  isSummaryLong.value ? `${props.work.summary.slice(0, SUMMARY_LIMIT)}…` : props.work.summary
+)
 </script>
 
 <style scoped>
@@ -75,6 +106,18 @@ const showFull = ref(false)
   font-weight: 700;
   color: #1a1000;
   letter-spacing: 0.04em;
+}
+
+.work-card__category {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  font-family: var(--font-cjk);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1000;
+  white-space: nowrap;
 }
 
 .work-card__read-btn {
@@ -127,6 +170,8 @@ const showFull = ref(false)
 
 .work-card__val--yellow { color: #7a5800; }
 .work-card__val--green  { color: #166534; }
+.work-card__val--clickable { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.work-card__val--clickable:hover { background: #f5f0e8; }
 
 .fulltext-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
