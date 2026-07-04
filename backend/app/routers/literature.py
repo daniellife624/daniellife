@@ -76,6 +76,7 @@ def delete_work(item_id: int, db: Session = Depends(get_db), _=Depends(get_curre
     obj = db.query(LiteratureWork).filter(LiteratureWork.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
+    db.query(TimelineEvent).filter(TimelineEvent.work_id == item_id).update({TimelineEvent.work_id: None})
     db.delete(obj); db.commit()
 
 
