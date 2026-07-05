@@ -55,7 +55,12 @@
         <template v-if="mode === 'edit' && (current === 'activities' || current === 'travel')">
           <div class="modal__pm-title">照片管理（點擊照片可調整焦點）</div>
           <div class="modal__pm-grid">
-            <div v-for="photo in editingPhotos" :key="photo.url" class="modal__pm-item">
+            <div
+              v-for="photo in editingPhotos"
+              :key="photo.url"
+              class="modal__pm-item"
+              :style="{ aspectRatio: multiPhotoAspect }"
+            >
               <PhotoPositionPicker
                 :src="mediaUrl(photo.url)"
                 :position="photo.position"
@@ -67,6 +72,7 @@
               v-if="editingPhotos.length < multiPhotoLimit"
               class="modal__pm-add"
               :class="{ 'modal__pm-add--loading': photoUploading }"
+              :style="{ aspectRatio: multiPhotoAspect }"
             >
               <span>{{ photoUploading ? '…' : '+' }}</span>
               <input type="file" accept="image/*" style="display:none" :disabled="photoUploading" @change="(e) => $emit('upload-multi', e)" />
@@ -78,14 +84,14 @@
         <template v-if="mode === 'edit' && current === 'social'">
           <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
           <div class="modal__pm-single">
-            <div v-if="editingPhotoUrl" class="modal__pm-single-img">
+            <div v-if="editingPhotoUrl" class="modal__pm-single-img" :style="{ aspectRatio: singlePhotoAspect }">
               <PhotoPositionPicker
                 :src="mediaUrl(editingPhotoUrl)"
                 :position="editingPhotoPosition"
                 @update:position="(pos) => $emit('update-single-position', pos)"
               />
             </div>
-            <div v-else class="modal__pm-single-placeholder">尚無照片</div>
+            <div v-else class="modal__pm-single-placeholder" :style="{ aspectRatio: singlePhotoAspect }">尚無照片</div>
             <div class="modal__pm-single-actions">
               <label class="modal__pm-upload-btn" :class="{ 'modal__pm-upload-btn--loading': photoUploading }">
                 {{ photoUploading ? '上傳中…' : editingPhotoUrl ? '更換照片' : '上傳照片' }}
@@ -100,14 +106,14 @@
         <template v-if="mode === 'edit' && current === 'internships'">
           <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
           <div class="modal__pm-single">
-            <div v-if="editingPhotoUrl" class="modal__pm-single-img">
+            <div v-if="editingPhotoUrl" class="modal__pm-single-img" :style="{ aspectRatio: singlePhotoAspect }">
               <PhotoPositionPicker
                 :src="mediaUrl(editingPhotoUrl)"
                 :position="editingPhotoPosition"
                 @update:position="(pos) => $emit('update-single-position', pos)"
               />
             </div>
-            <div v-else class="modal__pm-single-placeholder">尚無照片</div>
+            <div v-else class="modal__pm-single-placeholder" :style="{ aspectRatio: singlePhotoAspect }">尚無照片</div>
             <div class="modal__pm-single-actions">
               <label class="modal__pm-upload-btn" :class="{ 'modal__pm-upload-btn--loading': photoUploading }">
                 {{ photoUploading ? '上傳中…' : editingPhotoUrl ? '更換照片' : '上傳照片' }}
@@ -126,6 +132,7 @@
               v-for="(preview, i) in pendingPhotoPreview"
               :key="i"
               class="modal__pm-add modal__pm-slot"
+              :style="{ aspectRatio: multiPhotoAspect }"
               @click="triggerPendingPhoto(i)"
             >
               <img v-if="preview" :src="preview" class="modal__pm-thumb" />
@@ -139,8 +146,8 @@
         <template v-if="mode === 'add' && (current === 'social' || current === 'internships')">
           <div class="modal__pm-title">照片（可選）</div>
           <div class="modal__pm-single">
-            <img v-if="pendingSinglePreview" :src="pendingSinglePreview" class="modal__pm-single-img" />
-            <div v-else class="modal__pm-single-placeholder">尚無照片</div>
+            <img v-if="pendingSinglePreview" :src="pendingSinglePreview" class="modal__pm-single-img" :style="{ aspectRatio: singlePhotoAspect }" />
+            <div v-else class="modal__pm-single-placeholder" :style="{ aspectRatio: singlePhotoAspect }">尚無照片</div>
             <label class="modal__pm-upload-btn">
               {{ pendingSinglePreview ? '更換照片' : '選擇照片' }}
               <input type="file" accept="image/*" style="display:none" @change="onPendingSingleChange" />
@@ -199,6 +206,10 @@ const localFormData = ref<Record<string, string>>({})
 
 // activities（社團/領導經驗）最多 2 張照片；travel 最多 4 張
 const multiPhotoLimit = computed(() => (props.current === 'activities' ? 2 : 4))
+
+// 讓 Admin 照片預覽的長寬比盡量貼近實際卡片顯示比例，避免焦點對準了但實際顯示時人被裁掉
+const singlePhotoAspect = computed(() => (props.current === 'internships' ? '5 / 2' : '16 / 9'))
+const multiPhotoAspect  = computed(() => (props.current === 'activities' ? '5 / 4' : '4 / 3'))
 
 // Pending photos for add mode
 const pendingPhotoFiles    = ref<(File | null)[]>([])
@@ -365,8 +376,7 @@ function handleSave() {
 
 .modal__pm-item {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 160px;
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -397,8 +407,7 @@ function handleSave() {
 }
 
 .modal__pm-add {
-  width: 80px;
-  height: 80px;
+  width: 160px;
   border: 2px dashed var(--color-ink-4);
   border-radius: var(--radius-sm);
   display: flex;
@@ -415,8 +424,8 @@ function handleSave() {
 .modal__pm-single { display: flex; gap: var(--space-3); align-items: flex-start; }
 
 .modal__pm-single-img {
-  width: 120px;
-  height: 90px;
+  width: 260px;
+  max-width: 100%;
   object-fit: cover;
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -424,8 +433,8 @@ function handleSave() {
 }
 
 .modal__pm-single-placeholder {
-  width: 120px;
-  height: 90px;
+  width: 260px;
+  max-width: 100%;
   background: #f5efea;
   border-radius: var(--radius-sm);
   display: flex;
