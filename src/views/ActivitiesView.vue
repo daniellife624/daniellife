@@ -31,6 +31,21 @@
       </div>
     </section>
 
+    <!-- 其他經驗 -->
+    <section v-if="otherItems.length" class="exp-section">
+      <div class="exp-section__inner">
+        <h2 class="page-title">其他經驗</h2>
+        <div class="exp-list">
+          <ExperienceCard
+            v-for="item in otherItems"
+            :key="item.id"
+            :item="item"
+            @view-more="activeModal = item"
+          />
+        </div>
+      </div>
+    </section>
+
     <!-- 造訪過國家 -->
     <section class="travel">
       <div class="travel__inner">
@@ -106,6 +121,7 @@ let leafletMap: L.Map | null = null
 
 const leadershipItems = computed(() => experiences.value.filter((e) => e.type === 'leadership'))
 const clubItems = computed(() => experiences.value.filter((e) => e.type === 'club'))
+const otherItems = computed(() => experiences.value.filter((e) => e.type === 'other'))
 const continents = ref(groupByContinent([]))
 
 const CONT_COLORS: Record<string, { bg: string; text: string }> = {

@@ -36,3 +36,9 @@ export async function uploadSocialPhoto(id: number, file: File): Promise<SocialA
 export async function deleteSocialPhoto(id: number): Promise<SocialActivity> {
   return apiFetch<SocialActivity>(`/api/social/${id}/photo`, { method: 'DELETE' })
 }
+
+export async function updateSocialPhotoPosition(id: number, position: string): Promise<SocialActivity> {
+  return apiFetch<SocialActivity>(`/api/social/${id}/photo-position`, {
+    method: 'PATCH', body: JSON.stringify({ position }),
+  })
+}

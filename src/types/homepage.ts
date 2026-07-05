@@ -6,6 +6,7 @@ export interface Internship {
   period: string
   contribution: string
   photoUrl?: string
+  photoPosition?: string
 }
 
 export interface StarItem {

@@ -18,6 +18,19 @@ class SocialActivityOut(BaseModel):
     contribution: str
     reflection: str = ""
     photoUrl: Optional[str] = None
+    photoPosition: str = "50% 50%"
+
+
+class PhotoPositionIn(BaseModel):
+    position: str
+
+    @field_validator('position')
+    @classmethod
+    def position_format(cls, v: str) -> str:
+        parts = v.strip().split()
+        if len(parts) != 2 or not all(p.endswith('%') for p in parts):
+            raise ValueError('「照片位置」格式須為 "X% Y%"，例如 "50% 50%"')
+        return v.strip()
 
 
 class SocialActivityIn(BaseModel):

@@ -10,11 +10,12 @@
       <div class="exp-card__photos">
         <template v-if="item.photos?.length">
           <img
-            v-for="url in item.photos.slice(0, 2)"
-            :key="url"
-            :src="mediaUrl(url)"
+            v-for="photo in item.photos.slice(0, 2)"
+            :key="photo.url"
+            :src="mediaUrl(photo.url)"
             class="exp-card__photo exp-card__photo--img"
             alt="活動照片"
+            :style="{ objectPosition: photo.position || '50% 50%' }"
           />
           <div v-for="i in Math.max(0, 2 - item.photos.length)" :key="'p'+i" class="exp-card__photo"></div>
         </template>
@@ -75,6 +76,7 @@ defineEmits<{ 'view-more': [] }>()
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  white-space: pre-wrap;
 }
 
 .exp-card__right {

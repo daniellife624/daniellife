@@ -24,6 +24,18 @@ export async function deleteTravelPhoto(id: number, url: string): Promise<Travel
   return apiFetch<TravelEntry>(`/api/activities/travel/${id}/photo?url=${encodeURIComponent(url)}`, { method: 'DELETE' })
 }
 
+export async function updateExperiencePhotoPosition(id: number, url: string, position: string): Promise<Experience> {
+  return apiFetch<Experience>(`/api/activities/experiences/${id}/photo-position`, {
+    method: 'PATCH', body: JSON.stringify({ url, position }),
+  })
+}
+
+export async function updateTravelPhotoPosition(id: number, url: string, position: string): Promise<TravelEntry> {
+  return apiFetch<TravelEntry>(`/api/activities/travel/${id}/photo-position`, {
+    method: 'PATCH', body: JSON.stringify({ url, position }),
+  })
+}
+
 export async function uploadTravelPhoto(id: number, file: File): Promise<TravelEntry> {
   const form = new FormData()
   form.append('file', file)

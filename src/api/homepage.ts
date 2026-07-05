@@ -34,6 +34,11 @@ export async function uploadInternshipPhoto(id: number, file: File): Promise<Int
 export async function deleteInternshipPhoto(id: number): Promise<Internship> {
   return apiFetch<Internship>(`/api/homepage/internships/${id}/photo`, { method: 'DELETE' })
 }
+export async function updateInternshipPhotoPosition(id: number, position: string): Promise<Internship> {
+  return apiFetch<Internship>(`/api/homepage/internships/${id}/photo-position`, {
+    method: 'PATCH', body: JSON.stringify({ position }),
+  })
+}
 
 // ── Projects ─────────────────────────────────────────────────────
 export async function getProjects(): Promise<Project[]> {

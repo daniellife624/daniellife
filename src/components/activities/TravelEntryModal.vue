@@ -14,11 +14,12 @@
         </div>
         <div v-if="entry.photos?.length" class="modal__photos modal__photos--real">
           <img
-            v-for="url in entry.photos"
-            :key="url"
-            :src="mediaUrl(url)"
+            v-for="photo in entry.photos"
+            :key="photo.url"
+            :src="mediaUrl(photo.url)"
             class="modal__photo-img"
             alt="旅行照片"
+            :style="{ objectPosition: photo.position || '50% 50%' }"
           />
         </div>
         <div v-else class="modal__photos">

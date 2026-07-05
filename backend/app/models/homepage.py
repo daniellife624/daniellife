@@ -12,6 +12,7 @@ class Internship(Base):
     end_date     = Column(Date, nullable=True)
     contribution = Column(Text, nullable=False)
     photo_url    = Column(String(500), nullable=True)
+    photo_position = Column(String(20), nullable=False, default="50% 50%")
 
 
 class Project(Base):

@@ -168,6 +168,7 @@
       :save-error="saveError"
       :editing-photos="editingPhotos"
       :editing-photo-url="editingPhotoUrl"
+      :editing-photo-position="editingPhotoPosition"
       :photo-uploading="photoUploading"
       @close="modalOpen = false"
       @save="handleModalSave"
@@ -175,6 +176,8 @@
       @delete-multi="deleteAdminPhoto"
       @upload-single-edit="handleUploadSingleEdit"
       @delete-single-edit="handleDeleteSingleEdit"
+      @update-single-position="updateSinglePhotoPosition"
+      @update-multi-position="updateMultiPhotoPosition"
     />
 
   </div>
@@ -189,7 +192,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminModal, { type FieldDef } from '@/components/admin/AdminModal.vue'
 import {
   getInternships, createInternship, updateInternship, deleteInternship,
-  uploadInternshipPhoto, deleteInternshipPhoto,
+  uploadInternshipPhoto, deleteInternshipPhoto, updateInternshipPhotoPosition,
   getProjects,    createProject,    updateProject,    deleteProject,
   getAcademicMilestones, createAcademicMilestone, updateAcademicMilestone, deleteAcademicMilestone,
   reorderAcademic,
@@ -203,10 +206,11 @@ import {
   getExperiences, createExperience, updateExperience, deleteExperience,
   getTravelEntries, createTravelEntry, updateTravelEntry, deleteTravelEntry,
   uploadExperiencePhoto, deleteExperiencePhoto, uploadTravelPhoto, deleteTravelPhoto,
+  updateExperiencePhotoPosition, updateTravelPhotoPosition,
 } from '@/api/activities'
 import {
   getSocialActivities, createSocialActivity, updateSocialActivity, deleteSocialActivity,
-  uploadSocialPhoto, deleteSocialPhoto,
+  uploadSocialPhoto, deleteSocialPhoto, updateSocialPhotoPosition,
 } from '@/api/social'
 import {
   getLiteratureWorks, createLiteratureWork, updateLiteratureWork, deleteLiteratureWork,
@@ -218,7 +222,7 @@ import {
   getHoldings, createHolding, updateHolding, deleteHolding,
 } from '@/api/finance'
 import type { Internship, Project, AcademicMilestone, FuturePlan, LangCertAdmin, CertGroupAdmin } from '@/types/homepage'
-import type { Experience, TravelEntry } from '@/types/activities'
+import type { Experience, TravelEntry, PhotoItem } from '@/types/activities'
 import type { SocialActivity, SdgNumber } from '@/types/social'
 import type { LiteratureWork } from '@/types/literature'
 import type { ThesisPaper } from '@/types/thesis'
@@ -285,9 +289,10 @@ const certGroups       = ref<CertGroupAdmin[]>([])
 const travelEntries    = ref<TravelEntry[]>([])
 
 // ── Edit-mode photo state (passed as props to AdminModal) ──
-const editingPhotos   = ref<string[]>([])
-const editingPhotoUrl = ref<string>('')
-const photoUploading  = ref(false)
+const editingPhotos         = ref<PhotoItem[]>([])
+const editingPhotoUrl       = ref<string>('')
+const editingPhotoPosition  = ref<string>('50% 50%')
+const photoUploading        = ref(false)
 
 onMounted(async () => {
   ;[
@@ -355,7 +360,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'starR',      label: 'STAR — R 結果（150字以內）', type: 'textarea', maxLength: 150 },
   ],
   activities: [
-    { key: 'type',         label: '類型', placeholder: 'leadership / club' },
+    { key: 'type',         label: '類型', options: ['leadership', 'club', 'other'] },
     { key: 'title',        label: '標題' },
     { key: 'organization', label: '組織' },
     { key: 'periodFrom',   label: '開始年月', placeholder: '例：2025/07' },
@@ -574,14 +579,19 @@ function openEdit(id: number) {
   // populate edit-mode photo refs
   editingPhotos.value = []
   editingPhotoUrl.value = ''
+  editingPhotoPosition.value = '50% 50%'
   if (current.value === 'activities') {
     editingPhotos.value = [...(experiences.value.find((e) => e.id === id)?.photos ?? [])]
   } else if (current.value === 'travel') {
     editingPhotos.value = [...(travelEntries.value.find((t) => t.id === id)?.photos ?? [])]
   } else if (current.value === 'social') {
-    editingPhotoUrl.value = socialActivities.value.find((a) => a.id === id)?.photoUrl ?? ''
+    const item = socialActivities.value.find((a) => a.id === id)
+    editingPhotoUrl.value = item?.photoUrl ?? ''
+    editingPhotoPosition.value = item?.photoPosition ?? '50% 50%'
   } else if (current.value === 'internships') {
-    editingPhotoUrl.value = interns.value.find((i) => i.id === id)?.photoUrl ?? ''
+    const item = interns.value.find((i) => i.id === id)
+    editingPhotoUrl.value = item?.photoUrl ?? ''
+    editingPhotoPosition.value = item?.photoPosition ?? '50% 50%'
   }
 
   modalInitialFormData.value = fd
@@ -620,7 +630,7 @@ function validateForm(fd: Record<string, string>): string {
       if (s(key).length > 150) return `「STAR — ${label}」不可超過 150 字`
     }
   } else if (current.value === 'activities') {
-    if (!['leadership', 'club'].includes(s('type'))) return '「類型」須為 leadership 或 club'
+    if (!['leadership', 'club', 'other'].includes(s('type'))) return '「類型」須為 leadership / club / other'
     if (!s('title').trim()) return '「標題」不可空白'
     if (!s('organization').trim()) return '「組織」不可空白'
     if (!MONTH.test(s('periodFrom'))) return '「開始年月」格式須為 YYYY/MM（例：2025/07）'
@@ -740,11 +750,11 @@ async function saveModal(
 
     } else if (current.value === 'activities') {
       const body = {
-        type: s('type') as 'leadership' | 'club',
+        type: s('type') as 'leadership' | 'club' | 'other',
         title: s('title'), organization: s('organization'),
         period: buildPeriod(s('periodFrom'), s('periodTo')),
         contribution: s('contribution'),
-        photos: [] as string[],
+        photos: [] as PhotoItem[],
       }
       if (isEdit) {
         replaceInList(experiences.value, await updateExperience(editId.value!, body))
@@ -876,7 +886,7 @@ async function saveModal(
         activities: s('activities') || undefined,
         purchases: s('purchases') || undefined,
         journal: s('journal') || undefined,
-        photos: [] as string[],
+        photos: [] as PhotoItem[],
       }
       if (isEdit) {
         replaceInList(travelEntries.value, await updateTravelEntry(editId.value!, body))
@@ -1022,6 +1032,40 @@ async function deleteAdminInternPhoto() {
     saveError.value = err instanceof Error ? err.message : '刪除失敗'
   } finally {
     photoUploading.value = false
+  }
+}
+
+// ── Photo focus-point (position) updates ──
+async function updateSinglePhotoPosition(position: string) {
+  if (editId.value === null) return
+  const previous = editingPhotoPosition.value
+  editingPhotoPosition.value = position
+  try {
+    if (current.value === 'social') {
+      replaceInList(socialActivities.value, await updateSocialPhotoPosition(editId.value, position))
+    } else if (current.value === 'internships') {
+      replaceInList(interns.value, await updateInternshipPhotoPosition(editId.value, position))
+    }
+  } catch (err) {
+    editingPhotoPosition.value = previous
+    saveError.value = err instanceof Error ? err.message : '更新焦點失敗'
+  }
+}
+
+async function updateMultiPhotoPosition({ url, position }: { url: string; position: string }) {
+  if (editId.value === null) return
+  try {
+    if (current.value === 'activities') {
+      const updated = await updateExperiencePhotoPosition(editId.value, url, position)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(experiences.value, updated)
+    } else if (current.value === 'travel') {
+      const updated = await updateTravelPhotoPosition(editId.value, url, position)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(travelEntries.value, updated)
+    }
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : '更新焦點失敗'
   }
 }
 

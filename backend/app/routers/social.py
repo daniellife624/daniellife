@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models.social import SocialActivity
-from ..schemas.social import SocialActivityOut, SocialActivityIn
+from ..schemas.social import SocialActivityOut, SocialActivityIn, PhotoPositionIn
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "social"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -42,6 +42,7 @@ def _to_out(r) -> SocialActivityOut:
         contribution=r.contribution,
         reflection=r.reflection or "",
         photoUrl=r.photo_url,
+        photoPosition=r.photo_position or "50% 50%",
     )
 
 
@@ -127,5 +128,20 @@ def delete_social_photo(
         if target.exists():
             target.unlink()
     obj.photo_url = None
+    db.commit(); db.refresh(obj)
+    return _to_out(obj)
+
+
+@router.patch("/{item_id}/photo-position", response_model=SocialActivityOut)
+def update_social_photo_position(
+    item_id: int,
+    body: PhotoPositionIn,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.photo_position = body.position
     db.commit(); db.refresh(obj)
     return _to_out(obj)

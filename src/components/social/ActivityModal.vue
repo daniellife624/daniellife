@@ -9,7 +9,13 @@
         </div>
         <p class="modal__info">舉辦組織、單位：{{ activity.organization }}</p>
         <p class="modal__info">期間：From {{ activity.periodFrom }} To {{ activity.periodTo }}</p>
-        <img v-if="activity.photoUrl" :src="mediaUrl(activity.photoUrl)" class="modal__photo modal__photo--img" alt="活動照片" />
+        <img
+          v-if="activity.photoUrl"
+          :src="mediaUrl(activity.photoUrl)"
+          class="modal__photo modal__photo--img"
+          alt="活動照片"
+          :style="{ objectPosition: activity.photoPosition || '50% 50%' }"
+        />
         <div v-else class="modal__photo"></div>
         <p class="modal__body-text">主要貢獻&心得：</p>
         <p class="modal__body-text">{{ activity.contribution }}</p>

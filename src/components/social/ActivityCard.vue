@@ -11,7 +11,7 @@
     <div class="activity-card__right">
       <div
         class="activity-card__photo"
-        :style="act.photoUrl ? `background-image:url(${mediaUrl(act.photoUrl)});background-size:cover;background-position:center` : ''"
+        :style="act.photoUrl ? `background-image:url(${mediaUrl(act.photoUrl)});background-size:cover;background-position:${act.photoPosition || '50% 50%'}` : ''"
       ></div>
       <p class="activity-card__period">
         期間<br>From {{ act.periodFrom }}<br>To {{ act.periodTo }}

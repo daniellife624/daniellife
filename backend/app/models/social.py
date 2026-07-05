@@ -15,3 +15,4 @@ class SocialActivity(Base):
     contribution = Column(Text, nullable=False)
     reflection   = Column(Text, nullable=False, default="")
     photo_url    = Column(String(500), nullable=True)
+    photo_position = Column(String(20), nullable=False, default="50% 50%")

@@ -53,13 +53,21 @@
 
         <!-- 照片管理（activities / travel — 多張；edit 模式） -->
         <template v-if="mode === 'edit' && (current === 'activities' || current === 'travel')">
-          <div class="modal__pm-title">照片管理</div>
+          <div class="modal__pm-title">照片管理（點擊照片可調整焦點）</div>
           <div class="modal__pm-grid">
-            <div v-for="url in editingPhotos" :key="url" class="modal__pm-item">
-              <img :src="mediaUrl(url)" class="modal__pm-thumb" alt="照片" />
-              <button class="modal__pm-del" :disabled="photoUploading" @click="$emit('delete-multi', url)">×</button>
+            <div v-for="photo in editingPhotos" :key="photo.url" class="modal__pm-item">
+              <PhotoPositionPicker
+                :src="mediaUrl(photo.url)"
+                :position="photo.position"
+                @update:position="(pos) => $emit('update-multi-position', { url: photo.url, position: pos })"
+              />
+              <button class="modal__pm-del" :disabled="photoUploading" @click="$emit('delete-multi', photo.url)">×</button>
             </div>
-            <label class="modal__pm-add" :class="{ 'modal__pm-add--loading': photoUploading }">
+            <label
+              v-if="editingPhotos.length < multiPhotoLimit"
+              class="modal__pm-add"
+              :class="{ 'modal__pm-add--loading': photoUploading }"
+            >
               <span>{{ photoUploading ? '…' : '+' }}</span>
               <input type="file" accept="image/*" style="display:none" :disabled="photoUploading" @change="(e) => $emit('upload-multi', e)" />
             </label>
@@ -68,9 +76,15 @@
 
         <!-- 照片管理（social — 單張；edit 模式） -->
         <template v-if="mode === 'edit' && current === 'social'">
-          <div class="modal__pm-title">照片（單張）</div>
+          <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
           <div class="modal__pm-single">
-            <img v-if="editingPhotoUrl" :src="mediaUrl(editingPhotoUrl)" class="modal__pm-single-img" alt="活動照片" />
+            <div v-if="editingPhotoUrl" class="modal__pm-single-img">
+              <PhotoPositionPicker
+                :src="mediaUrl(editingPhotoUrl)"
+                :position="editingPhotoPosition"
+                @update:position="(pos) => $emit('update-single-position', pos)"
+              />
+            </div>
             <div v-else class="modal__pm-single-placeholder">尚無照片</div>
             <div class="modal__pm-single-actions">
               <label class="modal__pm-upload-btn" :class="{ 'modal__pm-upload-btn--loading': photoUploading }">
@@ -84,9 +98,15 @@
 
         <!-- 照片管理（internships — 單張；edit 模式） -->
         <template v-if="mode === 'edit' && current === 'internships'">
-          <div class="modal__pm-title">照片（單張）</div>
+          <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
           <div class="modal__pm-single">
-            <img v-if="editingPhotoUrl" :src="mediaUrl(editingPhotoUrl)" class="modal__pm-single-img" alt="實習照片" />
+            <div v-if="editingPhotoUrl" class="modal__pm-single-img">
+              <PhotoPositionPicker
+                :src="mediaUrl(editingPhotoUrl)"
+                :position="editingPhotoPosition"
+                @update:position="(pos) => $emit('update-single-position', pos)"
+              />
+            </div>
             <div v-else class="modal__pm-single-placeholder">尚無照片</div>
             <div class="modal__pm-single-actions">
               <label class="modal__pm-upload-btn" :class="{ 'modal__pm-upload-btn--loading': photoUploading }">
@@ -100,7 +120,7 @@
 
         <!-- 新增模式：多張照片選取（activities / travel） -->
         <template v-if="mode === 'add' && (current === 'activities' || current === 'travel')">
-          <div class="modal__pm-title">照片（可選，最多 4 張）</div>
+          <div class="modal__pm-title">照片（可選，最多 {{ multiPhotoLimit }} 張）</div>
           <div class="modal__pm-grid">
             <div
               v-for="(preview, i) in pendingPhotoPreview"
@@ -141,10 +161,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
+import PhotoPositionPicker from './PhotoPositionPicker.vue'
 
 export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean; maxLength?: number }
+export type PhotoItem = { url: string; position: string }
 
 const props = defineProps<{
   open: boolean
@@ -155,8 +177,9 @@ const props = defineProps<{
   current: string
   saving: boolean
   saveError: string
-  editingPhotos: string[]
+  editingPhotos: PhotoItem[]
   editingPhotoUrl: string
+  editingPhotoPosition: string
   photoUploading: boolean
 }>()
 
@@ -167,14 +190,19 @@ const emit = defineEmits<{
   'delete-multi': [url: string]
   'upload-single-edit': [e: Event]
   'delete-single-edit': []
+  'update-single-position': [position: string]
+  'update-multi-position': [payload: { url: string; position: string }]
 }>()
 
 // Local form state — initialized from initialFormData each time the modal opens
 const localFormData = ref<Record<string, string>>({})
 
+// activities（社團/領導經驗）最多 2 張照片；travel 最多 4 張
+const multiPhotoLimit = computed(() => (props.current === 'activities' ? 2 : 4))
+
 // Pending photos for add mode
-const pendingPhotoFiles    = ref<(File | null)[]>([null, null, null, null])
-const pendingPhotoPreview  = ref<(string | null)[]>([null, null, null, null])
+const pendingPhotoFiles    = ref<(File | null)[]>([])
+const pendingPhotoPreview  = ref<(string | null)[]>([])
 const pendingSingleFile    = ref<File | null>(null)
 const pendingSinglePreview = ref<string>('')
 let   pendingPhotoSlot     = 0
@@ -183,8 +211,8 @@ const pendingPhotoInputEl  = ref<HTMLInputElement | null>(null)
 watch(() => props.open, (newOpen) => {
   if (!newOpen) return
   localFormData.value = { ...props.initialFormData }
-  pendingPhotoFiles.value    = [null, null, null, null]
-  pendingPhotoPreview.value  = [null, null, null, null]
+  pendingPhotoFiles.value    = Array(multiPhotoLimit.value).fill(null)
+  pendingPhotoPreview.value  = Array(multiPhotoLimit.value).fill(null)
   pendingSingleFile.value    = null
   pendingSinglePreview.value = ''
 })
@@ -391,6 +419,7 @@ function handleSave() {
   height: 90px;
   object-fit: cover;
   border-radius: var(--radius-sm);
+  overflow: hidden;
   display: block;
 }
 

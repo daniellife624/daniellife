@@ -1,4 +1,9 @@
-export type ExperienceType = 'leadership' | 'club'
+export type ExperienceType = 'leadership' | 'club' | 'other'
+
+export interface PhotoItem {
+  url: string
+  position: string
+}
 
 export interface Experience {
   id: number
@@ -7,7 +12,7 @@ export interface Experience {
   organization: string
   period: string
   contribution: string
-  photos: string[]
+  photos: PhotoItem[]
 }
 
 export interface TravelEntry {
@@ -20,7 +25,7 @@ export interface TravelEntry {
   companions?: string
   activities?: string
   purchases?: string
-  photos?: string[]
+  photos?: PhotoItem[]
 }
 
 export interface Continent {

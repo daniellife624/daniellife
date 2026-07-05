@@ -8,11 +8,12 @@
         <p class="modal__info">服務期間：{{ experience.period }}</p>
         <div v-if="experience.photos?.length" class="modal__photos modal__photos--real">
           <img
-            v-for="url in experience.photos"
-            :key="url"
-            :src="mediaUrl(url)"
+            v-for="photo in experience.photos"
+            :key="photo.url"
+            :src="mediaUrl(photo.url)"
             class="modal__photo-img"
             alt="活動照片"
+            :style="{ objectPosition: photo.position || '50% 50%' }"
           />
         </div>
         <div v-else class="modal__photos">
@@ -110,5 +111,6 @@ defineEmits<{ close: [] }>()
   font-size: 14px;
   color: var(--color-ink-2);
   line-height: 1.8;
+  white-space: pre-wrap;
 }
 </style>

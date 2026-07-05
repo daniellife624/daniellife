@@ -8,6 +8,24 @@ _DATE_RE = re.compile(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
 _CONTINENTS = {'Asia', 'Europe', 'Americas', 'Africa', 'Australia'}
 
 
+class PhotoItem(BaseModel):
+    url: str
+    position: str = "50% 50%"
+
+
+class PhotoPositionIn(BaseModel):
+    url: str
+    position: str
+
+    @field_validator('position')
+    @classmethod
+    def position_format(cls, v: str) -> str:
+        parts = v.strip().split()
+        if len(parts) != 2 or not all(p.endswith('%') for p in parts):
+            raise ValueError('「照片位置」格式須為 "X% Y%"，例如 "50% 50%"')
+        return v.strip()
+
+
 class ExperienceOut(BaseModel):
     id: int
     type: str
@@ -17,7 +35,7 @@ class ExperienceOut(BaseModel):
     startDate: Optional[str] = None     # ISO "YYYY-MM-DD"
     endDate: Optional[str] = None
     contribution: str
-    photos: list[str] = []
+    photos: list[PhotoItem] = []
 
 
 class ExperienceIn(BaseModel):
@@ -31,8 +49,8 @@ class ExperienceIn(BaseModel):
     @field_validator('type')
     @classmethod
     def type_choices(cls, v: str) -> str:
-        if v not in ('leadership', 'club'):
-            raise ValueError('「類型」須為 leadership 或 club')
+        if v not in ('leadership', 'club', 'other'):
+            raise ValueError('「類型」須為 leadership / club / other')
         return v
 
     @field_validator('title', 'organization', 'contribution')
@@ -60,7 +78,7 @@ class TravelEntryOut(BaseModel):
     companions: Optional[str] = None
     activities: Optional[str] = None
     purchases: Optional[str] = None
-    photos: list[str] = []
+    photos: list[PhotoItem] = []
 
 
 class TravelEntryIn(BaseModel):

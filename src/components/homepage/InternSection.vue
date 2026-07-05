@@ -13,7 +13,13 @@
             <h3 class="intern-card__company">{{ item.company }}</h3>
             <p class="intern-card__dept">部門/職稱：{{ item.dept }}/{{ item.role }}</p>
             <div class="intern-card__photo">
-              <img v-if="item.photoUrl" :src="mediaUrl(item.photoUrl)" :alt="item.company" class="intern-card__photo-img" />
+              <img
+                v-if="item.photoUrl"
+                :src="mediaUrl(item.photoUrl)"
+                :alt="item.company"
+                class="intern-card__photo-img"
+                :style="{ objectPosition: item.photoPosition || '50% 50%' }"
+              />
               <span v-else class="intern-card__photo-hint">尚未上傳照片</span>
             </div>
             <p class="intern-card__contrib">主要貢獻：{{ item.contribution }}</p>
@@ -34,7 +40,13 @@
         <p class="intern-modal__meta">部門：{{ activeIntern.dept }}　　職稱：{{ activeIntern.role }}</p>
         <p class="intern-modal__meta">實習期間：{{ activeIntern.period }}</p>
         <div class="intern-modal__photo">
-          <img v-if="activeIntern.photoUrl" :src="mediaUrl(activeIntern.photoUrl)" :alt="activeIntern.company" class="intern-modal__photo-img" />
+          <img
+            v-if="activeIntern.photoUrl"
+            :src="mediaUrl(activeIntern.photoUrl)"
+            :alt="activeIntern.company"
+            class="intern-modal__photo-img"
+            :style="{ objectPosition: activeIntern.photoPosition || '50% 50%' }"
+          />
           <span v-else class="intern-modal__photo-hint">尚未上傳照片</span>
         </div>
         <div class="intern-modal__section">

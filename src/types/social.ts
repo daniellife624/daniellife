@@ -12,4 +12,5 @@ export interface SocialActivity {
   contribution: string
   reflection: string
   photoUrl?: string
+  photoPosition?: string
 }

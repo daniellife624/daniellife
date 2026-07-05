@@ -52,6 +52,7 @@ def _intern_out(r: m.Internship) -> s.InternshipOut:
         id=r.id, company=r.company, dept=r.dept, role=r.role,
         period=_fmt_period(r.start_date, r.end_date),
         contribution=r.contribution, photoUrl=r.photo_url,
+        photoPosition=r.photo_position or "50% 50%",
     )
 
 
@@ -146,6 +147,21 @@ def delete_internship_photo(
         if target.exists():
             target.unlink()
     obj.photo_url = None
+    db.commit(); db.refresh(obj)
+    return _intern_out(obj)
+
+
+@router.patch("/internships/{item_id}/photo-position", response_model=s.InternshipOut)
+def update_internship_photo_position(
+    item_id: int,
+    body: s.PhotoPositionIn,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    obj = db.query(m.Internship).filter(m.Internship.id == item_id).first()
+    if not obj:
+        raise HTTPException(404, "Not found")
+    obj.photo_position = body.position
     db.commit(); db.refresh(obj)
     return _intern_out(obj)
 
