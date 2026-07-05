@@ -2,8 +2,8 @@
   <div class="exp-card">
     <div class="exp-card__left">
       <h3 class="exp-card__title">{{ item.title }}</h3>
-      <p class="exp-card__info">服務機構：{{ item.organization }}</p>
-      <p class="exp-card__info">服務期間：{{ item.period }}</p>
+      <p class="exp-card__info">機構：{{ item.organization }}</p>
+      <p class="exp-card__info">期間：{{ item.period }}</p>
       <p class="exp-card__contrib">主要貢獻：{{ item.contribution }}</p>
     </div>
     <div class="exp-card__right">

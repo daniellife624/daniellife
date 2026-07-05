@@ -4,8 +4,8 @@
       <div class="modal">
         <button class="modal__close" @click="$emit('close')">×</button>
         <h3 class="modal__title">{{ experience.title }}</h3>
-        <p class="modal__info">服務機構：{{ experience.organization }}</p>
-        <p class="modal__info">服務期間：{{ experience.period }}</p>
+        <p class="modal__info">機構：{{ experience.organization }}</p>
+        <p class="modal__info">期間：{{ experience.period }}</p>
         <div v-if="experience.photos?.length" class="modal__photos modal__photos--real">
           <img
             v-for="photo in experience.photos"

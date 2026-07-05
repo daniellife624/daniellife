@@ -208,7 +208,7 @@ const localFormData = ref<Record<string, string>>({})
 const multiPhotoLimit = computed(() => (props.current === 'activities' ? 2 : 4))
 
 // 讓 Admin 照片預覽的長寬比盡量貼近實際卡片顯示比例，避免焦點對準了但實際顯示時人被裁掉
-const singlePhotoAspect = computed(() => (props.current === 'internships' ? '5 / 2' : '16 / 9'))
+const singlePhotoAspect = computed(() => (props.current === 'internships' ? '4 / 3' : '16 / 9'))
 const multiPhotoAspect  = computed(() => (props.current === 'activities' ? '5 / 4' : '4 / 3'))
 
 // Pending photos for add mode

@@ -166,7 +166,7 @@ function scrollNext() {
 }
 
 .intern-card__photo {
-  height: 140px;
+  aspect-ratio: 4 / 3;
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
   display: flex;
@@ -286,7 +286,7 @@ function scrollNext() {
 }
 
 .intern-modal__photo {
-  height: 160px;
+  aspect-ratio: 4 / 3;
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
   display: flex;
