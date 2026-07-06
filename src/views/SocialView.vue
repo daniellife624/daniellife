@@ -67,15 +67,17 @@ const esgSubMap: Record<'E' | 'S' | 'G', EsgType> = {
 const totalCount = computed(() => activities.value.length)
 
 const filteredActivities = computed(() => {
+  if (stage1.value === 'all') return activities.value
+
   let list = activities.value
   if (stage1.value === 'esg') {
     const t = esgSubMap[esgSub.value]
     list = list.filter((a) => a.esgType === t)
-  } else if (stage1.value === 'sdgs') {
+    if (appliedEsg.value.length) list = list.filter((a) => a.esgType && appliedEsg.value.includes(a.esgType))
+  } else {
     list = list.filter((a) => a.sdgNumbers.length > 0)
+    if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   }
-  if (appliedEsg.value.length) list = list.filter((a) => a.esgType && appliedEsg.value.includes(a.esgType))
-  if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   return list
 })
 
