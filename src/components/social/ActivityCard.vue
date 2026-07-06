@@ -8,7 +8,7 @@
         </a>
         <span v-if="act.esgType" class="esg-badge" :class="`esg-badge--${act.esgType.toLowerCase()}`">{{ act.esgType }}</span>
         <template v-else>
-          <span v-for="n in act.sdgNumbers" :key="n" class="sdg-badge">SDG {{ n }}</span>
+          <span v-for="n in act.sdgNumbers" :key="n" class="sdg-badge">SDG {{ n }}・{{ SDG_LABELS[n] }}</span>
         </template>
       </div>
       <p class="activity-card__org">舉辦組織、單位：{{ act.organization }}</p>
@@ -20,7 +20,7 @@
         :style="act.photos[0] ? `background-image:url(${mediaUrl(act.photos[0].url)});background-size:cover;background-position:${act.photos[0].position || '50% 50%'}` : ''"
       ></div>
       <p class="activity-card__period">
-        期間<br>From {{ act.periodFrom }}<br>To {{ act.periodTo }}
+        期間<br>From {{ act.periodFrom }} To {{ act.periodTo }}
       </p>
       <button class="activity-card__btn" @click="$emit('view-more')">查看更多</button>
     </div>
@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { mediaUrl } from '@/api/client'
 import type { SocialActivity } from '@/types/social'
+import { SDG_LABELS } from '@/data/sdgLabels'
 
 defineProps<{ act: SocialActivity }>()
 defineEmits<{ 'view-more': [] }>()
@@ -74,7 +75,8 @@ defineEmits<{ 'view-more': [] }>()
 .activity-card__org { font-family: var(--font-cjk); font-size: 13px; color: var(--color-ink-2); }
 .activity-card__contrib {
   font-family: var(--font-cjk); font-size: 13px; color: var(--color-ink-2); line-height: 1.7;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+  white-space: pre-wrap;
 }
 
 .activity-card__right { flex-shrink: 0; width: 160px; display: flex; flex-direction: column; gap: var(--space-2); }

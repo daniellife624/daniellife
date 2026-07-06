@@ -88,7 +88,7 @@
           <label v-else class="modal__label">
             SDG 號碼（可複選）
             <select multiple class="modal__select" v-model="sdgSelected">
-              <option v-for="n in 17" :key="n" :value="String(n)">{{ n }}</option>
+              <option v-for="n in 17" :key="n" :value="String(n)">SDG {{ n }} - {{ SDG_LABELS[n] }}</option>
             </select>
           </label>
         </div>
@@ -191,6 +191,7 @@
 import { ref, computed, watch } from 'vue'
 import { mediaUrl } from '@/api/client'
 import PhotoPositionPicker from './PhotoPositionPicker.vue'
+import { SDG_LABELS } from '@/data/sdgLabels'
 
 export type FieldDef = { key: string; label: string; type?: string; placeholder?: string; options?: string[]; multi?: boolean; maxLength?: number }
 export type PhotoItem = { url: string; position: string }

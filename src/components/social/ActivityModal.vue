@@ -10,7 +10,7 @@
           </a>
           <span v-if="activity.esgType" class="esg-badge" :class="`esg-badge--${activity.esgType.toLowerCase()}`">{{ activity.esgType }}</span>
           <template v-else>
-            <span v-for="n in activity.sdgNumbers" :key="n" class="sdg-badge">SDG {{ n }}</span>
+            <span v-for="n in activity.sdgNumbers" :key="n" class="sdg-badge">SDG {{ n }}・{{ SDG_LABELS[n] }}</span>
           </template>
         </div>
         <p class="modal__info">舉辦組織、單位：{{ activity.organization }}</p>
@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import { mediaUrl } from '@/api/client'
 import type { SocialActivity } from '@/types/social'
+import { SDG_LABELS } from '@/data/sdgLabels'
 
 defineProps<{ activity: SocialActivity | null }>()
 defineEmits<{ close: [] }>()

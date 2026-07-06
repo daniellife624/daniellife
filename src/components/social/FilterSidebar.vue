@@ -9,9 +9,9 @@
     </label>
 
     <p class="sidebar__sub sidebar__sub--mt">SDGs 分類</p>
-    <label v-for="n in 5" :key="n" class="sidebar__label">
+    <label v-for="n in 17" :key="n" class="sidebar__label">
       <input type="checkbox" v-model="selectedSdg" :value="n" class="sidebar__checkbox" />
-      {{ n }}
+      SDG {{ n }}・{{ SDG_LABELS[n] }}
     </label>
 
     <div class="sidebar__count-row">
@@ -24,6 +24,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { EsgType } from '@/types/social'
+import { SDG_LABELS } from '@/data/sdgLabels'
 
 defineProps<{ totalCount: number }>()
 const emit = defineEmits<{ apply: [esg: EsgType[], sdg: number[]] }>()
