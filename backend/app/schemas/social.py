@@ -56,6 +56,13 @@ class SocialActivityIn(BaseModel):
             raise ValueError(f'「{info.field_name}」不可空白')
         return v
 
+    @field_validator('reflection')
+    @classmethod
+    def reflection_length(cls, v: str) -> str:
+        if len(v) > 300:
+            raise ValueError('「心得」不可超過 300 字')
+        return v
+
     @field_validator('esgType')
     @classmethod
     def esg_choices(cls, v: Optional[str]) -> Optional[str]:

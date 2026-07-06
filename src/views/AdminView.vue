@@ -374,7 +374,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'sdgNumbers',   label: 'SDG 號碼（逗號分隔）', placeholder: '如 1,3,13' },
     { key: 'periodFrom',   label: '開始日期', placeholder: 'YYYY-MM-DD' },
     { key: 'periodTo',     label: '結束日期（可空）', placeholder: 'YYYY-MM-DD' },
-    { key: 'reflection',   label: '心得', type: 'textarea' },
+    { key: 'reflection',   label: '心得（300字以內）', type: 'textarea', maxLength: 300 },
     { key: 'youtubeUrl',   label: 'YouTube 連結（可空）' },
   ],
   literature: [
@@ -653,6 +653,7 @@ function validateForm(fd: Record<string, string>): string {
     if (!DATE.test(s('periodFrom'))) return '「開始日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
     if (s('periodTo') && !DATE.test(s('periodTo'))) return '「結束日期」格式須為 YYYY-MM-DD，或留空'
     if (!s('reflection').trim()) return '「心得」不可空白'
+    if (s('reflection').length > 300) return '「心得」不可超過 300 字'
   } else if (current.value === 'literature') {
     if (!s('title').trim()) return '「標題」不可空白'
     if (s('category') && !['小說', '散文', '新詩'].includes(s('category')))
