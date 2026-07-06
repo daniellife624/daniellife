@@ -1,27 +1,19 @@
 import re
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 _DATE_RE = re.compile(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
 _ESG_TYPES = {'Environmental', 'Social', 'Governance'}
 
 
-class SocialActivityOut(BaseModel):
-    id: int
-    name: str
-    organization: str
-    esgType: str
-    sdgNumbers: list[int] = []
-    periodFrom: str
-    periodTo: Optional[str] = None
-    contribution: str
-    reflection: str = ""
-    photoUrl: Optional[str] = None
-    photoPosition: str = "50% 50%"
+class PhotoItem(BaseModel):
+    url: str
+    position: str = "50% 50%"
 
 
 class PhotoPositionIn(BaseModel):
+    url: str
     position: str
 
     @field_validator('position')
@@ -33,18 +25,31 @@ class PhotoPositionIn(BaseModel):
         return v.strip()
 
 
+class SocialActivityOut(BaseModel):
+    id: int
+    name: str
+    organization: str
+    esgType: Optional[str] = None
+    sdgNumbers: list[int] = []
+    periodFrom: str
+    periodTo: Optional[str] = None
+    reflection: str = ""
+    youtubeUrl: Optional[str] = None
+    photos: list[PhotoItem] = []
+
+
 class SocialActivityIn(BaseModel):
     name: str
     organization: str
-    esgType: str
+    esgType: Optional[str] = None
     sdgNumbers: list[int] = []
     periodFrom: str           # ISO "YYYY-MM-DD"
     periodTo: Optional[str] = None
-    contribution: str
     reflection: str = ""
-    photoUrl: Optional[str] = None
+    youtubeUrl: Optional[str] = None
+    photos: list[PhotoItem] = []   # 未直接使用，多張照片透過專用端點管理（與 experiences 一致）
 
-    @field_validator('name', 'organization', 'contribution')
+    @field_validator('name', 'organization', 'reflection')
     @classmethod
     def not_empty(cls, v: str, info) -> str:
         if not v.strip():
@@ -53,8 +58,8 @@ class SocialActivityIn(BaseModel):
 
     @field_validator('esgType')
     @classmethod
-    def esg_choices(cls, v: str) -> str:
-        if v not in _ESG_TYPES:
+    def esg_choices(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in _ESG_TYPES:
             raise ValueError('「ESG 類型」須為 Environmental / Social / Governance')
         return v
 
@@ -66,6 +71,16 @@ class SocialActivityIn(BaseModel):
             if not (1 <= int(n) <= 17):
                 raise ValueError('「SDG 號碼」每個值須介於 1 到 17')
         return nums
+
+    @model_validator(mode='after')
+    def exactly_one_classification(self):
+        has_esg = bool(self.esgType)
+        has_sdg = bool(self.sdgNumbers)
+        if has_esg and has_sdg:
+            raise ValueError('「ESG 類型」與「SDG 號碼」只能擇一分類，不能同時填寫')
+        if not has_esg and not has_sdg:
+            raise ValueError('請選擇「ESG 類型」或「SDG 號碼」其中一種分類方式')
+        return self
 
     @field_validator('periodFrom')
     @classmethod

@@ -33,12 +33,12 @@ export async function uploadSocialPhoto(id: number, file: File): Promise<SocialA
   return res.json()
 }
 
-export async function deleteSocialPhoto(id: number): Promise<SocialActivity> {
-  return apiFetch<SocialActivity>(`/api/social/${id}/photo`, { method: 'DELETE' })
+export async function deleteSocialPhoto(id: number, url: string): Promise<SocialActivity> {
+  return apiFetch<SocialActivity>(`/api/social/${id}/photo?url=${encodeURIComponent(url)}`, { method: 'DELETE' })
 }
 
-export async function updateSocialPhotoPosition(id: number, position: string): Promise<SocialActivity> {
+export async function updateSocialPhotoPosition(id: number, url: string, position: string): Promise<SocialActivity> {
   return apiFetch<SocialActivity>(`/api/social/${id}/photo-position`, {
-    method: 'PATCH', body: JSON.stringify({ position }),
+    method: 'PATCH', body: JSON.stringify({ url, position }),
   })
 }

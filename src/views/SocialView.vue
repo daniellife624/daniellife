@@ -70,9 +70,11 @@ const filteredActivities = computed(() => {
   if (stage1.value === 'esg') {
     const t = esgSubMap[esgSub.value]
     list = list.filter((a) => a.esgType === t)
+    if (appliedEsg.value.length) list = list.filter((a) => a.esgType && appliedEsg.value.includes(a.esgType))
+  } else {
+    list = list.filter((a) => a.sdgNumbers.length > 0)
+    if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   }
-  if (appliedEsg.value.length) list = list.filter((a) => appliedEsg.value.includes(a.esgType))
-  if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   return list
 })
 

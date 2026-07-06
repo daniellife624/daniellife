@@ -8,11 +8,10 @@ class SocialActivity(Base):
     id           = Column(Integer, primary_key=True, index=True)
     name         = Column(String(200), nullable=False)
     organization = Column(String(200), nullable=False)
-    esg_type     = Column(String(20), nullable=False)    # Environmental | Social | Governance
+    esg_type     = Column(String(20), nullable=True)      # Environmental | Social | Governance；與 sdg_numbers 互斥（擇一分類）
     sdg_numbers  = Column(Text, default="[]")            # JSON array e.g. [1, 3, 13]
     period_from  = Column(Date, nullable=False)
     period_to    = Column(Date, nullable=True)
-    contribution = Column(Text, nullable=False)
     reflection   = Column(Text, nullable=False, default="")
-    photo_url    = Column(String(500), nullable=True)
-    photo_position = Column(String(20), nullable=False, default="50% 50%")
+    youtube_url  = Column(String(500), nullable=True)
+    photos       = Column(Text, default="[]")            # JSON array: [{url, position}]，最多 MAX_SOCIAL_PHOTOS 張

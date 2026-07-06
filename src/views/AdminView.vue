@@ -46,8 +46,8 @@
       <AdminTable
         v-if="current === 'social'"
         title="社會參與"
-        :columns="['名稱', 'ESG', '組織', '開始', '結束']"
-        :rows="socialActivities.map(a => [a.name, a.esgType, a.organization, a.periodFrom, a.periodTo ?? ''])"
+        :columns="['名稱', '分類', '組織', '開始', '結束']"
+        :rows="socialActivities.map(a => [a.name, a.esgType ?? (a.sdgNumbers.length ? `SDG ${a.sdgNumbers.join(',')}` : ''), a.organization, a.periodFrom, a.periodTo ?? ''])"
         :ids="socialActivities.map(a => a.id)"
         @add="openAdd"
         @edit="openEdit"
@@ -374,8 +374,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'sdgNumbers',   label: 'SDG 號碼（逗號分隔）', placeholder: '如 1,3,13' },
     { key: 'periodFrom',   label: '開始日期', placeholder: 'YYYY-MM-DD' },
     { key: 'periodTo',     label: '結束日期（可空）', placeholder: 'YYYY-MM-DD' },
-    { key: 'contribution', label: '主要貢獻', type: 'textarea' },
     { key: 'reflection',   label: '心得', type: 'textarea' },
+    { key: 'youtubeUrl',   label: 'YouTube 連結（可空）' },
   ],
   literature: [
     { key: 'title',      label: '標題' },
@@ -446,7 +446,12 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   ],
 }
 
-const modalFields = computed<FieldDef[]>(() => fieldMap[current.value] ?? [])
+// social 的 esgType/sdgNumbers 改由 AdminModal 專屬的分類選擇區塊處理，不走通用欄位渲染
+const modalFields = computed<FieldDef[]>(() => {
+  const all = fieldMap[current.value] ?? []
+  if (current.value === 'social') return all.filter((f) => f.key !== 'esgType' && f.key !== 'sdgNumbers')
+  return all
+})
 
 function parsePeriod(period: string): { from: string; to: string } {
   const parts = period.split('–').map((p) => p.trim())
@@ -509,10 +514,10 @@ function openEdit(id: number) {
   } else if (current.value === 'social') {
     const item = socialActivities.value.find((a) => a.id === id)!
     Object.assign(fd, {
-      name: item.name, organization: item.organization, esgType: item.esgType,
-      sdgNumbers: item.sdgNumbers.join(', '),
+      name: item.name, organization: item.organization, esgType: item.esgType ?? '',
+      sdgNumbers: item.sdgNumbers.join(','),
       periodFrom: item.periodFrom, periodTo: item.periodTo ?? '',
-      contribution: item.contribution, reflection: item.reflection,
+      reflection: item.reflection, youtubeUrl: item.youtubeUrl ?? '',
     })
   } else if (current.value === 'literature') {
     const item = literatureWorks.value.find((w) => w.id === id)!
@@ -585,9 +590,7 @@ function openEdit(id: number) {
   } else if (current.value === 'travel') {
     editingPhotos.value = [...(travelEntries.value.find((t) => t.id === id)?.photos ?? [])]
   } else if (current.value === 'social') {
-    const item = socialActivities.value.find((a) => a.id === id)
-    editingPhotoUrl.value = item?.photoUrl ?? ''
-    editingPhotoPosition.value = item?.photoPosition ?? '50% 50%'
+    editingPhotos.value = [...(socialActivities.value.find((a) => a.id === id)?.photos ?? [])]
   } else if (current.value === 'internships') {
     const item = interns.value.find((i) => i.id === id)
     editingPhotoUrl.value = item?.photoUrl ?? ''
@@ -639,10 +642,17 @@ function validateForm(fd: Record<string, string>): string {
   } else if (current.value === 'social') {
     if (!s('name').trim()) return '「名稱」不可空白'
     if (!s('organization').trim()) return '「組織」不可空白'
-    if (!['Environmental', 'Social', 'Governance'].includes(s('esgType')))
-      return '「ESG 類型」須為 Environmental / Social / Governance'
+    {
+      const hasEsg = !!s('esgType').trim()
+      const hasSdg = !!s('sdgNumbers').trim()
+      if (hasEsg && hasSdg) return '「ESG 類型」與「SDG 號碼」只能擇一分類'
+      if (!hasEsg && !hasSdg) return '請選擇「ESG 類型」或「SDG 號碼」其中一種分類'
+      if (hasEsg && !['Environmental', 'Social', 'Governance'].includes(s('esgType')))
+        return '「ESG 類型」須為 Environmental / Social / Governance'
+    }
     if (!DATE.test(s('periodFrom'))) return '「開始日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
     if (s('periodTo') && !DATE.test(s('periodTo'))) return '「結束日期」格式須為 YYYY-MM-DD，或留空'
+    if (!s('reflection').trim()) return '「心得」不可空白'
   } else if (current.value === 'literature') {
     if (!s('title').trim()) return '「標題」不可空白'
     if (s('category') && !['小說', '散文', '新詩'].includes(s('category')))
@@ -772,16 +782,19 @@ async function saveModal(
         .filter((n): n is SdgNumber => !isNaN(n) && n >= 1 && n <= 17)
       const body = {
         name: s('name'), organization: s('organization'),
-        esgType: s('esgType') as SocialActivity['esgType'],
+        esgType: (s('esgType') || undefined) as SocialActivity['esgType'] | undefined,
         sdgNumbers,
         periodFrom: s('periodFrom'), periodTo: s('periodTo') || undefined,
-        contribution: s('contribution'), reflection: s('reflection'),
+        reflection: s('reflection'), youtubeUrl: s('youtubeUrl') || undefined,
+        photos: [] as PhotoItem[],
       }
       if (isEdit) {
         replaceInList(socialActivities.value, await updateSocialActivity(editId.value!, body))
       } else {
         let created = await createSocialActivity(body)
-        if (pendingSingleFile) created = await uploadSocialPhoto(created.id, pendingSingleFile)
+        for (const file of pendingMultiFiles) {
+          if (file) created = await uploadSocialPhoto(created.id, file)
+        }
         socialActivities.value.push(created)
       }
 
@@ -932,6 +945,10 @@ async function uploadAdminPhoto(e: Event) {
       const updated = await uploadTravelPhoto(editId.value, file)
       editingPhotos.value = updated.photos ?? []
       replaceInList(travelEntries.value, updated)
+    } else if (current.value === 'social') {
+      const updated = await uploadSocialPhoto(editId.value, file)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(socialActivities.value, updated)
     }
   } catch (err) {
     saveError.value = err instanceof Error ? err.message : '上傳失敗'
@@ -953,6 +970,10 @@ async function deleteAdminPhoto(url: string) {
       const updated = await deleteTravelPhoto(editId.value, url)
       editingPhotos.value = updated.photos ?? []
       replaceInList(travelEntries.value, updated)
+    } else if (current.value === 'social') {
+      const updated = await deleteSocialPhoto(editId.value, url)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(socialActivities.value, updated)
     }
   } catch (err) {
     saveError.value = err instanceof Error ? err.message : '刪除失敗'
@@ -962,45 +983,11 @@ async function deleteAdminPhoto(url: string) {
 }
 
 function handleUploadSingleEdit(e: Event) {
-  if (current.value === 'social') uploadAdminSocialPhoto(e)
-  else if (current.value === 'internships') uploadAdminInternPhoto(e)
+  if (current.value === 'internships') uploadAdminInternPhoto(e)
 }
 
 function handleDeleteSingleEdit() {
-  if (current.value === 'social') deleteAdminSocialPhoto()
-  else if (current.value === 'internships') deleteAdminInternPhoto()
-}
-
-async function uploadAdminSocialPhoto(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file || editId.value === null) return
-  ;(e.target as HTMLInputElement).value = ''
-  photoUploading.value = true
-  saveError.value = ''
-  try {
-    const updated = await uploadSocialPhoto(editId.value, file)
-    editingPhotoUrl.value = updated.photoUrl ?? ''
-    replaceInList(socialActivities.value, updated)
-  } catch (err) {
-    saveError.value = err instanceof Error ? err.message : '上傳失敗'
-  } finally {
-    photoUploading.value = false
-  }
-}
-
-async function deleteAdminSocialPhoto() {
-  if (editId.value === null) return
-  photoUploading.value = true
-  saveError.value = ''
-  try {
-    const updated = await deleteSocialPhoto(editId.value)
-    editingPhotoUrl.value = ''
-    replaceInList(socialActivities.value, updated)
-  } catch (err) {
-    saveError.value = err instanceof Error ? err.message : '刪除失敗'
-  } finally {
-    photoUploading.value = false
-  }
+  if (current.value === 'internships') deleteAdminInternPhoto()
 }
 
 async function uploadAdminInternPhoto(e: Event) {
@@ -1041,9 +1028,7 @@ async function updateSinglePhotoPosition(position: string) {
   const previous = editingPhotoPosition.value
   editingPhotoPosition.value = position
   try {
-    if (current.value === 'social') {
-      replaceInList(socialActivities.value, await updateSocialPhotoPosition(editId.value, position))
-    } else if (current.value === 'internships') {
+    if (current.value === 'internships') {
       replaceInList(interns.value, await updateInternshipPhotoPosition(editId.value, position))
     }
   } catch (err) {
@@ -1063,6 +1048,10 @@ async function updateMultiPhotoPosition({ url, position }: { url: string; positi
       const updated = await updateTravelPhotoPosition(editId.value, url, position)
       editingPhotos.value = updated.photos ?? []
       replaceInList(travelEntries.value, updated)
+    } else if (current.value === 'social') {
+      const updated = await updateSocialPhotoPosition(editId.value, url, position)
+      editingPhotos.value = updated.photos ?? []
+      replaceInList(socialActivities.value, updated)
     }
   } catch (err) {
     saveError.value = err instanceof Error ? err.message : '更新焦點失敗'

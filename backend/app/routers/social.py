@@ -13,6 +13,7 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "social
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE_MB = 10
+MAX_SOCIAL_PHOTOS = 2
 
 router = APIRouter(prefix="/social", tags=["social"])
 
@@ -30,6 +31,20 @@ def _parse_date(s: str | None) -> date | None:
         return None
 
 
+def _normalize_photos(raw: str | None) -> list[dict]:
+    """相容舊格式（純字串陣列）與新格式（{url, position} 物件陣列）。"""
+    if not raw:
+        return []
+    items = json.loads(raw)
+    normalized = []
+    for item in items:
+        if isinstance(item, str):
+            normalized.append({"url": item, "position": "50% 50%"})
+        else:
+            normalized.append({"url": item.get("url"), "position": item.get("position") or "50% 50%"})
+    return normalized
+
+
 def _to_out(r) -> SocialActivityOut:
     return SocialActivityOut(
         id=r.id,
@@ -39,10 +54,9 @@ def _to_out(r) -> SocialActivityOut:
         sdgNumbers=json.loads(r.sdg_numbers) if r.sdg_numbers else [],
         periodFrom=r.period_from.isoformat() if r.period_from else "",
         periodTo=r.period_to.isoformat() if r.period_to else None,
-        contribution=r.contribution,
         reflection=r.reflection or "",
-        photoUrl=r.photo_url,
-        photoPosition=r.photo_position or "50% 50%",
+        youtubeUrl=r.youtube_url,
+        photos=_normalize_photos(r.photos),
     )
 
 
@@ -58,8 +72,7 @@ def create_social(body: SocialActivityIn, db: Session = Depends(get_db), _=Depen
         esg_type=body.esgType, sdg_numbers=json.dumps(body.sdgNumbers),
         period_from=_parse_date(body.periodFrom),
         period_to=_parse_date(body.periodTo) if body.periodTo else None,
-        contribution=body.contribution, reflection=body.reflection,
-        photo_url=body.photoUrl,
+        reflection=body.reflection, youtube_url=body.youtubeUrl,
     )
     db.add(obj); db.commit(); db.refresh(obj)
     return _to_out(obj)
@@ -74,7 +87,7 @@ def update_social(item_id: int, body: SocialActivityIn, db: Session = Depends(ge
     obj.esg_type = body.esgType; obj.sdg_numbers = json.dumps(body.sdgNumbers)
     obj.period_from = _parse_date(body.periodFrom)
     obj.period_to = _parse_date(body.periodTo) if body.periodTo else None
-    obj.contribution = body.contribution; obj.reflection = body.reflection
+    obj.reflection = body.reflection; obj.youtube_url = body.youtubeUrl
     db.commit(); db.refresh(obj)
     return _to_out(obj)
 
@@ -97,6 +110,9 @@ async def upload_social_photo(
     obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
+    photos = _normalize_photos(obj.photos)
+    if len(photos) >= MAX_SOCIAL_PHOTOS:
+        raise HTTPException(400, f"社會參與照片最多上傳 {MAX_SOCIAL_PHOTOS} 張")
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, f"不支援的檔案類型：{file.content_type}")
     content = await file.read()
@@ -105,11 +121,8 @@ async def upload_social_photo(
     ext = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
     filename = f"{item_id}_{uuid.uuid4().hex[:8]}{ext}"
     (UPLOAD_DIR / filename).write_bytes(content)
-    if obj.photo_url:
-        old = UPLOAD_DIR / Path(obj.photo_url).name
-        if old.exists():
-            old.unlink()
-    obj.photo_url = f"/uploads/social/{filename}"
+    photos.append({"url": f"/uploads/social/{filename}", "position": "50% 50%"})
+    obj.photos = json.dumps(photos)
     db.commit(); db.refresh(obj)
     return _to_out(obj)
 
@@ -117,18 +130,20 @@ async def upload_social_photo(
 @router.delete("/{item_id}/photo", response_model=SocialActivityOut)
 def delete_social_photo(
     item_id: int,
+    url: str,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    if obj.photo_url:
-        target = UPLOAD_DIR / Path(obj.photo_url).name
-        if target.exists():
-            target.unlink()
-    obj.photo_url = None
+    photos = _normalize_photos(obj.photos)
+    photos = [p for p in photos if p["url"] != url]
+    obj.photos = json.dumps(photos)
     db.commit(); db.refresh(obj)
+    target = UPLOAD_DIR / Path(url).name
+    if target.exists():
+        target.unlink()
     return _to_out(obj)
 
 
@@ -142,6 +157,14 @@ def update_social_photo_position(
     obj = db.query(SocialActivity).filter(SocialActivity.id == item_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    obj.photo_position = body.position
+    photos = _normalize_photos(obj.photos)
+    found = False
+    for p in photos:
+        if p["url"] == body.url:
+            p["position"] = body.position
+            found = True
+    if not found:
+        raise HTTPException(404, "Photo not found")
+    obj.photos = json.dumps(photos)
     db.commit(); db.refresh(obj)
     return _to_out(obj)

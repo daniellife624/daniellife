@@ -51,8 +51,50 @@
           </label>
         </div>
 
-        <!-- 照片管理（activities / travel — 多張；edit 模式） -->
-        <template v-if="mode === 'edit' && (current === 'activities' || current === 'travel')">
+        <!-- 分類方式（social 專用）：先選 ESG 或 SDGs，再載入對應的第二層選擇 -->
+        <div v-if="current === 'social'" class="modal__fields">
+          <label class="modal__label">
+            分類方式
+            <div class="modal__radio-group">
+              <button
+                type="button"
+                class="modal__radio-btn"
+                :class="{ 'modal__radio-btn--active': socialClassMode === 'esg' }"
+                @click="setSocialClassMode('esg')"
+              >ESG</button>
+              <button
+                type="button"
+                class="modal__radio-btn"
+                :class="{ 'modal__radio-btn--active': socialClassMode === 'sdgs' }"
+                @click="setSocialClassMode('sdgs')"
+              >SDGs</button>
+            </div>
+          </label>
+
+          <label v-if="socialClassMode === 'esg'" class="modal__label">
+            ESG 類型
+            <div class="modal__radio-group">
+              <button
+                v-for="opt in ['Environmental', 'Social', 'Governance']"
+                :key="opt"
+                type="button"
+                class="modal__radio-btn"
+                :class="{ 'modal__radio-btn--active': localFormData.esgType === opt }"
+                @click="localFormData.esgType = opt"
+              >{{ opt }}</button>
+            </div>
+          </label>
+
+          <label v-else class="modal__label">
+            SDG 號碼（可複選）
+            <select multiple class="modal__select" v-model="sdgSelected">
+              <option v-for="n in 17" :key="n" :value="String(n)">{{ n }}</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- 照片管理（activities / travel / social — 多張；edit 模式） -->
+        <template v-if="mode === 'edit' && (current === 'activities' || current === 'travel' || current === 'social')">
           <div class="modal__pm-title">照片管理（點擊照片可調整焦點）</div>
           <div class="modal__pm-grid">
             <div
@@ -80,28 +122,6 @@
           </div>
         </template>
 
-        <!-- 照片管理（social — 單張；edit 模式） -->
-        <template v-if="mode === 'edit' && current === 'social'">
-          <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
-          <div class="modal__pm-single">
-            <div v-if="editingPhotoUrl" class="modal__pm-single-img" :style="{ aspectRatio: singlePhotoAspect }">
-              <PhotoPositionPicker
-                :src="mediaUrl(editingPhotoUrl)"
-                :position="editingPhotoPosition"
-                @update:position="(pos) => $emit('update-single-position', pos)"
-              />
-            </div>
-            <div v-else class="modal__pm-single-placeholder" :style="{ aspectRatio: singlePhotoAspect }">尚無照片</div>
-            <div class="modal__pm-single-actions">
-              <label class="modal__pm-upload-btn" :class="{ 'modal__pm-upload-btn--loading': photoUploading }">
-                {{ photoUploading ? '上傳中…' : editingPhotoUrl ? '更換照片' : '上傳照片' }}
-                <input type="file" accept="image/*" style="display:none" :disabled="photoUploading" @change="(e) => $emit('upload-single-edit', e)" />
-              </label>
-              <button v-if="editingPhotoUrl" class="modal__pm-del-btn" :disabled="photoUploading" @click="$emit('delete-single-edit')">刪除照片</button>
-            </div>
-          </div>
-        </template>
-
         <!-- 照片管理（internships — 單張；edit 模式） -->
         <template v-if="mode === 'edit' && current === 'internships'">
           <div class="modal__pm-title">照片（單張，點擊照片可調整焦點）</div>
@@ -124,8 +144,8 @@
           </div>
         </template>
 
-        <!-- 新增模式：多張照片選取（activities / travel） -->
-        <template v-if="mode === 'add' && (current === 'activities' || current === 'travel')">
+        <!-- 新增模式：多張照片選取（activities / travel / social） -->
+        <template v-if="mode === 'add' && (current === 'activities' || current === 'travel' || current === 'social')">
           <div class="modal__pm-title">照片（可選，最多 {{ multiPhotoLimit }} 張）</div>
           <div class="modal__pm-grid">
             <div
@@ -142,8 +162,8 @@
           <input ref="pendingPhotoInputEl" type="file" accept="image/*" style="display:none" @change="onPendingPhotoChange" />
         </template>
 
-        <!-- 新增模式：單張照片選取（social / internships） -->
-        <template v-if="mode === 'add' && (current === 'social' || current === 'internships')">
+        <!-- 新增模式：單張照片選取（internships） -->
+        <template v-if="mode === 'add' && current === 'internships'">
           <div class="modal__pm-title">照片（可選）</div>
           <div class="modal__pm-single">
             <img v-if="pendingSinglePreview" :src="pendingSinglePreview" class="modal__pm-single-img" :style="{ aspectRatio: singlePhotoAspect }" />
@@ -204,12 +224,16 @@ const emit = defineEmits<{
 // Local form state — initialized from initialFormData each time the modal opens
 const localFormData = ref<Record<string, string>>({})
 
-// activities（社團/領導經驗）最多 2 張照片；travel 最多 4 張
-const multiPhotoLimit = computed(() => (props.current === 'activities' ? 2 : 4))
+// activities（社團/領導經驗）、social（社會參與）最多 2 張照片；travel 最多 4 張
+const multiPhotoLimit = computed(() => (props.current === 'travel' ? 4 : 2))
 
 // 讓 Admin 照片預覽的長寬比盡量貼近實際卡片顯示比例，避免焦點對準了但實際顯示時人被裁掉
-const singlePhotoAspect = computed(() => (props.current === 'internships' ? '4 / 3' : '16 / 9'))
-const multiPhotoAspect  = computed(() => (props.current === 'activities' ? '5 / 4' : '4 / 3'))
+const singlePhotoAspect = '4 / 3' // 目前僅 internships 使用單張照片
+const multiPhotoAspect  = computed(() => {
+  if (props.current === 'activities') return '5 / 4'
+  if (props.current === 'social') return '16 / 9'
+  return '4 / 3' // travel
+})
 
 // Pending photos for add mode
 const pendingPhotoFiles    = ref<(File | null)[]>([])
@@ -219,6 +243,20 @@ const pendingSinglePreview = ref<string>('')
 let   pendingPhotoSlot     = 0
 const pendingPhotoInputEl  = ref<HTMLInputElement | null>(null)
 
+// social 專用：ESG / SDGs 分類方式（兩者互斥，切換時清空另一欄位）
+const socialClassMode = ref<'esg' | 'sdgs'>('esg')
+
+function setSocialClassMode(mode: 'esg' | 'sdgs') {
+  socialClassMode.value = mode
+  if (mode === 'esg') localFormData.value.sdgNumbers = ''
+  else localFormData.value.esgType = ''
+}
+
+const sdgSelected = computed<string[]>({
+  get: () => multiValues('sdgNumbers'),
+  set: (v) => { localFormData.value.sdgNumbers = v.join(',') },
+})
+
 watch(() => props.open, (newOpen) => {
   if (!newOpen) return
   localFormData.value = { ...props.initialFormData }
@@ -226,6 +264,7 @@ watch(() => props.open, (newOpen) => {
   pendingPhotoPreview.value  = Array(multiPhotoLimit.value).fill(null)
   pendingSingleFile.value    = null
   pendingSinglePreview.value = ''
+  socialClassMode.value      = localFormData.value.esgType ? 'esg' : 'sdgs'
 })
 
 function multiValues(key: string): string[] {
@@ -337,7 +376,8 @@ function handleSave() {
 }
 
 .modal__input,
-.modal__textarea {
+.modal__textarea,
+.modal__select {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-ink-4);
   border-radius: var(--radius-sm);
@@ -348,6 +388,8 @@ function handleSave() {
   width: 100%;
   box-sizing: border-box;
 }
+.modal__select { height: 150px; }
+.modal__select:focus { border-color: var(--color-primary); }
 .modal__input:focus,
 .modal__textarea:focus { border-color: var(--color-primary); }
 .modal__textarea { resize: vertical; }
