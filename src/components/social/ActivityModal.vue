@@ -71,11 +71,10 @@ defineEmits<{ close: [] }>()
 }
 
 .modal__body-label {
-  font-size: 11px;
+  font-family: var(--font-cjk);
+  font-size: 15px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-ink-3);
+  color: var(--color-ink-1);
 }
 .modal__body-text { font-family: var(--font-cjk); font-size: 14px; color: var(--color-ink-2); line-height: 1.8; white-space: pre-wrap; }
 

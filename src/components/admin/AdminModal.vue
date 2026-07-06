@@ -148,18 +148,17 @@
         <template v-if="mode === 'add' && (current === 'activities' || current === 'travel' || current === 'social')">
           <div class="modal__pm-title">照片（可選，最多 {{ multiPhotoLimit }} 張）</div>
           <div class="modal__pm-grid">
-            <div
+            <label
               v-for="(preview, i) in pendingPhotoPreview"
               :key="i"
               class="modal__pm-add modal__pm-slot"
               :style="{ aspectRatio: multiPhotoAspect }"
-              @click="triggerPendingPhoto(i)"
             >
               <img v-if="preview" :src="preview" class="modal__pm-thumb" />
               <span v-else>+</span>
-            </div>
+              <input type="file" accept="image/*" style="display:none" @change="(e) => onPendingPhotoChange(e, i)" />
+            </label>
           </div>
-          <input ref="pendingPhotoInputEl" type="file" accept="image/*" style="display:none" @change="onPendingPhotoChange" />
         </template>
 
         <!-- 新增模式：單張照片選取（internships） -->
@@ -241,8 +240,6 @@ const pendingPhotoFiles    = ref<(File | null)[]>([])
 const pendingPhotoPreview  = ref<(string | null)[]>([])
 const pendingSingleFile    = ref<File | null>(null)
 const pendingSinglePreview = ref<string>('')
-let   pendingPhotoSlot     = 0
-const pendingPhotoInputEl  = ref<HTMLInputElement | null>(null)
 
 // social 專用：ESG / SDGs 分類方式（兩者互斥，切換時清空另一欄位）
 const socialClassMode = ref<'esg' | 'sdgs'>('esg')
@@ -280,18 +277,13 @@ function toggleMultiOption(key: string, opt: string) {
   localFormData.value[key] = current.join(',')
 }
 
-function triggerPendingPhoto(slot: number) {
-  pendingPhotoSlot = slot
-  pendingPhotoInputEl.value?.click()
-}
-
-function onPendingPhotoChange(e: Event) {
+function onPendingPhotoChange(e: Event, slot: number) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   ;(e.target as HTMLInputElement).value = ''
-  pendingPhotoFiles.value[pendingPhotoSlot] = file
+  pendingPhotoFiles.value[slot] = file
   const reader = new FileReader()
-  reader.onload = (ev) => { pendingPhotoPreview.value[pendingPhotoSlot] = ev.target?.result as string }
+  reader.onload = (ev) => { pendingPhotoPreview.value[slot] = ev.target?.result as string }
   reader.readAsDataURL(file)
 }
 

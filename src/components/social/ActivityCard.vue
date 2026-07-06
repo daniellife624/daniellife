@@ -20,7 +20,7 @@
         :style="act.photos[0] ? `background-image:url(${mediaUrl(act.photos[0].url)});background-size:cover;background-position:${act.photos[0].position || '50% 50%'}` : ''"
       ></div>
       <p class="activity-card__period">
-        期間<br>From {{ act.periodFrom }} To {{ act.periodTo }}
+        From {{ act.periodFrom }}<br>To {{ act.periodTo }}
       </p>
       <button class="activity-card__btn" @click="$emit('view-more')">查看更多</button>
     </div>

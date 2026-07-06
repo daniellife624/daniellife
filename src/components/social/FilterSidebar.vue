@@ -13,10 +13,6 @@
       <input type="checkbox" v-model="selectedSdg" :value="n" class="sidebar__checkbox" />
       SDG {{ n }}・{{ SDG_LABELS[n] }}
     </label>
-
-    <div class="sidebar__count-row">
-      <span class="sidebar__count">總共有<br>{{ totalCount }} 個</span>
-    </div>
     <button class="sidebar__btn" @click="apply">篩選</button>
   </aside>
 </template>
