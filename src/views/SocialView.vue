@@ -47,7 +47,7 @@ import ActivityCard from '@/components/social/ActivityCard.vue'
 import ActivityModal from '@/components/social/ActivityModal.vue'
 import FilterSidebar from '@/components/social/FilterSidebar.vue'
 
-const stage1 = ref<'esg' | 'sdgs'>('esg')
+const stage1 = ref<'all' | 'esg' | 'sdgs'>('all')
 const esgSub = ref<'E' | 'S' | 'G'>('E')
 const appliedEsg = ref<EsgType[]>([])
 const appliedSdg = ref<number[]>([])
@@ -55,6 +55,7 @@ const activities = ref<SocialActivity[]>([])
 const activeModal = ref<SocialActivity | null>(null)
 
 const stage1Tabs = [
+  { key: 'all', label: '全部' },
   { key: 'esg', label: 'ESG分類' },
   { key: 'sdgs', label: 'SDGs分類' },
 ]
@@ -70,11 +71,11 @@ const filteredActivities = computed(() => {
   if (stage1.value === 'esg') {
     const t = esgSubMap[esgSub.value]
     list = list.filter((a) => a.esgType === t)
-    if (appliedEsg.value.length) list = list.filter((a) => a.esgType && appliedEsg.value.includes(a.esgType))
-  } else {
+  } else if (stage1.value === 'sdgs') {
     list = list.filter((a) => a.sdgNumbers.length > 0)
-    if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   }
+  if (appliedEsg.value.length) list = list.filter((a) => a.esgType && appliedEsg.value.includes(a.esgType))
+  if (appliedSdg.value.length) list = list.filter((a) => a.sdgNumbers.some((n) => appliedSdg.value.includes(n)))
   return list
 })
 
