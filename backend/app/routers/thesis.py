@@ -142,7 +142,12 @@ def sync_notion(db: Session = Depends(get_db), _=Depends(get_current_user)):
     failed: list[dict] = []
     for p in papers:
         try:
-            p.notes = sync_paper_notes(p.notion_url, p.id)
+            result = sync_paper_notes(p.notion_url, p.id)
+            p.notes = result["notes"]
+            if result["purpose"]:
+                p.purpose = result["purpose"]
+            if result["contribution"]:
+                p.contribution = result["contribution"]
             synced.append(p.id)
         except NotionSyncError as e:
             failed.append({"id": p.id, "name": p.name, "error": str(e)})

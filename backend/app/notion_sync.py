@@ -140,8 +140,29 @@ def _blocks_to_html(client: httpx.Client, blocks: list[dict], paper_id: int) -> 
     return "".join(parts)
 
 
-def sync_paper_notes(page_url: str, paper_id: int) -> str:
+PURPOSE_PROPERTY = "研究目的 (150)"
+CONTRIBUTION_PROPERTY = "研究貢獻/影響/結果 (200)"
+
+
+def _plain_text(prop: dict) -> str:
+    return "".join(rt.get("plain_text", "") for rt in prop.get("rich_text", []))
+
+
+def _fetch_page_properties(client: httpx.Client, page_id: str) -> dict:
+    resp = client.get(f"{NOTION_API}/pages/{page_id}", headers=_headers())
+    if resp.status_code != 200:
+        raise NotionSyncError(f"Notion API 錯誤（{resp.status_code}）：{resp.text[:200]}")
+    return resp.json().get("properties", {})
+
+
+def sync_paper_notes(page_url: str, paper_id: int) -> dict:
+    """回傳 {notes, purpose, contribution}：notes 為頁面本文轉 HTML，purpose/contribution 取自
+    Notion 資料庫的「研究目的 (150)」「研究貢獻/影響/結果 (200)」欄位（取代原本手動輸入/LLM 生成的內容）。"""
     page_id = extract_page_id(page_url)
     with httpx.Client() as client:
         blocks = _fetch_blocks(client, page_id)
-        return _blocks_to_html(client, blocks, paper_id)
+        notes = _blocks_to_html(client, blocks, paper_id)
+        properties = _fetch_page_properties(client, page_id)
+        purpose = _plain_text(properties.get(PURPOSE_PROPERTY, {}))
+        contribution = _plain_text(properties.get(CONTRIBUTION_PROPERTY, {}))
+        return {"notes": notes, "purpose": purpose, "contribution": contribution}
