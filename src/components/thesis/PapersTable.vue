@@ -126,7 +126,7 @@ onMounted(async () => { allPapers.value = await getThesisPapers() })
 .col-notes { width: 100px; }
 
 .paper-row:nth-child(even) { background: var(--color-primary-bg); }
-.paper-row:hover { background: rgba(232, 193, 58, 0.18); }
+.paper-row:hover { background: #e8e8e8; }
 
 .paper-cell { padding: var(--space-3); font-family: var(--font-cjk); color: var(--color-ink-2); border-bottom: 1px solid var(--color-ink-4); vertical-align: top; line-height: 1.6; }
 .paper-cell--name { font-weight: 600; color: var(--color-ink-1); }

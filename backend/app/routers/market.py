@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -20,15 +21,28 @@ _YF_HEADERS = {
     "Referer": "https://finance.yahoo.com/",
 }
 
+# Yahoo 的 v7/finance/quote 很容易被打到 429（Too Many Requests）——尤其 MarketView 一次會
+# 掛兩個 MarketOverviewPanel（TW + US），各自打一次，等於每次進站就是雙倍請求量。
+# 用簡單的記憶體 cache 降低打 Yahoo 的頻率；失敗時優先回上一次成功的真實資料（即使有點舊），
+# 而不是直接掉回寫死很久沒更新的假資料（避免出現使用者回報「數據落差很大」的情況）。
+_QUOTES_CACHE_TTL = 60  # 秒
+_quotes_cache: dict = {}
+_quotes_cache_at: float = 0.0
+
 
 @router.get("/quotes")
 async def get_quotes():
+    global _quotes_cache, _quotes_cache_at
+    now = time.time()
+    if _quotes_cache and (now - _quotes_cache_at) < _QUOTES_CACHE_TTL:
+        return _quotes_cache
+
     try:
         async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
             res = await client.get(_YF_URL, headers=_YF_HEADERS)
             res.raise_for_status()
             results: list = res.json().get("quoteResponse", {}).get("result", [])
-            return {
+            data = {
                 r["symbol"]: {
                     "price": r.get("regularMarketPrice", 0),
                     "change": r.get("regularMarketChange", 0),
@@ -40,8 +54,13 @@ async def get_quotes():
                 }
                 for r in results
             }
+        if data:
+            _quotes_cache = data
+            _quotes_cache_at = now
+        return data
     except Exception:
-        return {}
+        # Yahoo 擋掉（常見是 429）：有舊的真實資料就先用，比跳回寫死的假資料準確
+        return _quotes_cache
 
 
 _PROVIDERS: dict[str, dict] = {
