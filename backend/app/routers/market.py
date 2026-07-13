@@ -7,8 +7,8 @@ from ..config import settings
 
 router = APIRouter(prefix="/market", tags=["market"])
 
+# 國際指數（亞股/歐股/美股）：Yahoo Finance v7（無官方替代來源，且常見被 429 擋，見下方 cache 註解）
 _YF_SYMBOLS = ",".join([
-    "^TWII", "^TWO",
     "^N225", "^KS11", "^HSI", "000001.SS",
     "^FTSE", "^GDAXI", "^FCHI", "^STOXX50E",
     "^GSPC", "^DJI", "^IXIC", "^RUT",
@@ -20,6 +20,51 @@ _YF_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://finance.yahoo.com/",
 }
+
+# 台股：改用證交所官方即時行情 API（mis.twse.com.tw），不需金鑰、比 Yahoo 穩定非常多。
+# ex_ch 代碼格式為 "{tse|otc}_{指數代碼}.tw"；t00=加權指數、o00=上櫃指數、t13=電子工業類指數、
+# t17=金融保險類指數（實際測試過數字與 TWSE 官網一致）。
+_TWSE_MIS_URL = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp"
+_TWSE_CODES = {
+    "tse_t00.tw": "^TWII",   # 加權指數
+    "otc_o00.tw": "^TWO",    # 上櫃指數
+    "tse_t13.tw": "TW_ELEC", # 電子類指數
+    "tse_t17.tw": "TW_FIN",  # 金融類指數
+}
+_TWSE_HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+
+
+async def _fetch_twse_quotes(client: httpx.AsyncClient) -> dict:
+    res = await client.get(_TWSE_MIS_URL, params={"ex_ch": "|".join(_TWSE_CODES)}, headers=_TWSE_HEADERS)
+    res.raise_for_status()
+    out: dict = {}
+    for item in res.json().get("msgArray", []):
+        sym = _TWSE_CODES.get(f"{item.get('ex')}_{item.get('ch')}")
+        if not sym:
+            continue
+
+        def _num(key: str) -> Optional[float]:
+            v = item.get(key)
+            try:
+                return float(v) if v and v != "-" else None
+            except ValueError:
+                return None
+
+        prev = _num("y")
+        price = _num("z") or prev
+        if price is None or prev is None:
+            continue
+        out[sym] = {
+            "price": price,
+            "change": price - prev,
+            "changePct": (price - prev) / prev * 100 if prev else 0,
+            "open": _num("o") or price,
+            "high": _num("h") or price,
+            "low": _num("l") or price,
+            "prev": prev,
+        }
+    return out
+
 
 # Yahoo 的 v7/finance/quote 很容易被打到 429（Too Many Requests）——尤其 MarketView 一次會
 # 掛兩個 MarketOverviewPanel（TW + US），各自打一次，等於每次進站就是雙倍請求量。
@@ -37,13 +82,19 @@ async def get_quotes():
     if _quotes_cache and (now - _quotes_cache_at) < _QUOTES_CACHE_TTL:
         return _quotes_cache
 
-    try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+    data: dict = {}
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        try:
+            data.update(await _fetch_twse_quotes(client))
+        except Exception:
+            pass  # 台股取不到就先跳過，仍嘗試國際指數
+
+        try:
             res = await client.get(_YF_URL, headers=_YF_HEADERS)
             res.raise_for_status()
             results: list = res.json().get("quoteResponse", {}).get("result", [])
-            data = {
-                r["symbol"]: {
+            for r in results:
+                data[r["symbol"]] = {
                     "price": r.get("regularMarketPrice", 0),
                     "change": r.get("regularMarketChange", 0),
                     "changePct": r.get("regularMarketChangePercent", 0),
@@ -52,15 +103,14 @@ async def get_quotes():
                     "low": r.get("regularMarketDayLow", 0),
                     "prev": r.get("regularMarketPreviousClose", 0),
                 }
-                for r in results
-            }
-        if data:
-            _quotes_cache = data
-            _quotes_cache_at = now
+        except Exception:
+            pass  # Yahoo 擋掉（常見是 429）：只要台股那邊有拿到資料，還是回傳部分結果
+
+    if data:
+        _quotes_cache = data
+        _quotes_cache_at = now
         return data
-    except Exception:
-        # Yahoo 擋掉（常見是 429）：有舊的真實資料就先用，比跳回寫死的假資料準確
-        return _quotes_cache
+    return _quotes_cache  # 兩邊都失敗才退回上一次成功的真實資料
 
 
 _PROVIDERS: dict[str, dict] = {

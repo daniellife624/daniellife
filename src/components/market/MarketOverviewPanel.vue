@@ -14,7 +14,11 @@
       </div>
     </div>
 
-    <div class="mop__body">
+    <div v-if="dataUnavailable" class="mop__unavailable">
+      <p class="mop__unavailable-text">目前無法取得即時報價，請稍後再試</p>
+    </div>
+
+    <div v-else class="mop__body">
       <div class="mop__list">
         <div
           v-for="(idx, i) in currentIndices"
@@ -31,7 +35,10 @@
             <span class="idx-row__name">{{ idx.name }}</span>
             <span v-if="idx.volume" class="idx-row__vol">{{ idx.volume }}</span>
           </div>
-          <div class="idx-row__nums">
+          <div v-if="idx.unavailable" class="idx-row__nums">
+            <span class="idx-row__na">資料暫缺</span>
+          </div>
+          <div v-else class="idx-row__nums">
             <span class="idx-row__price">{{ fmtP(idx.price) }}</span>
             <span class="idx-row__chg">
               {{ idx.change >= 0 ? '▲' : '▼' }}&thinsp;{{ fmtN(Math.abs(idx.change)) }}
@@ -41,37 +48,40 @@
       </div>
 
       <div class="mop__detail">
-        <p class="mop__feat-label">{{ ai.name }}</p>
-        <p class="mop__feat-price" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
-          {{ fmtP(ai.price) }}
-        </p>
-        <p class="mop__feat-chg" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
-          {{ ai.change >= 0 ? '▲' : '▼' }}&thinsp;{{ fmtN(Math.abs(ai.change)) }}
-          ({{ Math.abs(ai.changePct).toFixed(2) }}%)
-        </p>
-        <div class="mop__ohlc">
-          <span>開盤&thinsp;<b>{{ fmtP(ai.open) }}</b></span>
-          <span>最高&thinsp;<b>{{ fmtP(ai.high) }}</b></span>
-          <span>最低&thinsp;<b>{{ fmtP(ai.low) }}</b></span>
-          <span>昨收&thinsp;<b>{{ fmtP(ai.prev) }}</b></span>
-        </div>
+        <template v-if="ai.unavailable">
+          <p class="mop__unavailable-text mop__unavailable-text--inline">此指數目前資料暫缺</p>
+        </template>
+        <template v-else>
+          <p class="mop__feat-label">{{ ai.name }}</p>
+          <p class="mop__feat-price" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
+            {{ fmtP(ai.price) }}
+          </p>
+          <p class="mop__feat-chg" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
+            {{ ai.change >= 0 ? '▲' : '▼' }}&thinsp;{{ fmtN(Math.abs(ai.change)) }}
+            ({{ Math.abs(ai.changePct).toFixed(2) }}%)
+          </p>
+          <div class="mop__ohlc">
+            <span>開盤&thinsp;<b>{{ fmtP(ai.open) }}</b></span>
+            <span>最高&thinsp;<b>{{ fmtP(ai.high) }}</b></span>
+            <span>最低&thinsp;<b>{{ fmtP(ai.low) }}</b></span>
+            <span>昨收&thinsp;<b>{{ fmtP(ai.prev) }}</b></span>
+          </div>
 
-        <svg class="mop__spark" viewBox="0 0 200 70" preserveAspectRatio="none">
-          <defs>
-            <linearGradient :id="`sg-${uid}`" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0.18"/>
-              <stop offset="100%" :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <polygon  :points="area(ai.intraday)" :fill="`url(#sg-${uid})`"/>
-          <polyline :points="line(ai.intraday)" fill="none"
-            :stroke="ai.change >= 0 ? '#16a34a' : '#dc2626'"
-            stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-        </svg>
+          <svg class="mop__spark" viewBox="0 0 200 70" preserveAspectRatio="none">
+            <defs>
+              <linearGradient :id="`sg-${uid}`" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0.18"/>
+                <stop offset="100%" :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <polygon  :points="area(ai.intraday)" :fill="`url(#sg-${uid})`"/>
+            <polyline :points="line(ai.intraday)" fill="none"
+              :stroke="ai.change >= 0 ? '#16a34a' : '#dc2626'"
+              stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+        </template>
       </div>
     </div>
-
-    <p v-if="usingMock" class="mop__note">* 即時數據暫時無法取得，顯示示意資料</p>
   </div>
 </template>
 
@@ -96,11 +106,39 @@ interface Entry {
   price: number; change: number; changePct: number
   open: number; high: number; low: number; prev: number
   volume?: string; intraday: number[]
+  unavailable?: boolean
 }
 
 interface QuoteRaw {
   price: number; change: number; changePct: number
   open: number; high: number; low: number; prev: number
+}
+
+const SYMBOL_NAMES: Record<TabKey, { sym: string; name: string; vol?: string }[]> = {
+  TW: [
+    { sym: '^TWII',   name: '加權指數', vol: '成交額' },
+    { sym: '^TWO',    name: '上櫃指數' },
+    { sym: 'TW_ELEC', name: '電子類' },
+    { sym: 'TW_FIN',  name: '金融類' },
+  ],
+  ASIA: [
+    { sym: '^N225',     name: '日經指數' },
+    { sym: '^KS11',     name: '韓國綜合' },
+    { sym: '^HSI',      name: '香港恒生' },
+    { sym: '000001.SS', name: '上海綜合' },
+  ],
+  EU: [
+    { sym: '^FTSE',     name: '英國富時' },
+    { sym: '^GDAXI',    name: '德國DAX' },
+    { sym: '^FCHI',     name: '法國CAC40' },
+    { sym: '^STOXX50E', name: '歐洲50' },
+  ],
+  US: [
+    { sym: '^GSPC', name: 'S&P 500' },
+    { sym: '^DJI',  name: '道瓊工業' },
+    { sym: '^IXIC', name: 'NASDAQ' },
+    { sym: '^RUT',  name: '羅素2000' },
+  ],
 }
 
 function genIntraday(price: number, chg: number, n = 48): number[] {
@@ -114,53 +152,35 @@ function genIntraday(price: number, chg: number, n = 48): number[] {
   return pts
 }
 
-function mk(id: string, name: string, price: number, chg: number, vol?: string): Entry {
-  const prev = price - chg
-  const pct  = (chg / prev) * 100
-  const spd  = Math.abs(price * 0.004)
+function unavailableEntry(sym: string, name: string, vol?: string): Entry {
   return {
-    id, name, price, change: chg, changePct: pct,
-    open: prev + chg * 0.35,
-    high: Math.max(prev + chg * 0.35, price) + spd * 0.15,
-    low:  Math.min(prev + chg * 0.35, price) - spd * 0.15,
-    prev, volume: vol,
-    intraday: genIntraday(price, chg),
+    id: sym, name, price: 0, change: 0, changePct: 0,
+    open: 0, high: 0, low: 0, prev: 0, volume: vol,
+    intraday: [], unavailable: true,
   }
 }
 
-const MOCK: Record<TabKey, Entry[]> = {
-  TW: [
-    mk('^TWII', '加權指數', 22839.45,  68.20, '成交額'),
-    mk('^TWO',  '上櫃指數',   256.78,   3.08),
-    mk('elec',  '電子類',    1234.56,  -5.67),
-    mk('fini',  '金融類',    2234.89,  45.60),
-  ],
-  ASIA: [
-    mk('^N225',     '日經指數',  38947.21,  297.45),
-    mk('^KS11',     '韓國綜合',   2648.36,   15.78),
-    mk('^HSI',      '香港恒生',  19234.56, -124.33),
-    mk('000001.SS', '上海綜合',   3218.45,   12.67),
-  ],
-  EU: [
-    mk('^FTSE',     '英國富時',   8312.45,   34.56),
-    mk('^GDAXI',    '德國DAX',  18723.89,   87.34),
-    mk('^FCHI',     '法國CAC40',  7834.22,  -28.45),
-    mk('^STOXX50E', '歐洲50',     4923.78,   18.90),
-  ],
-  US: [
-    mk('^GSPC', 'S&P 500',   5892.34,   24.56),
-    mk('^DJI',  '道瓊工業', 43218.67,  178.45),
-    mk('^IXIC', 'NASDAQ',   19234.56,   87.23),
-    mk('^RUT',  '羅素2000',  2178.34,   -8.67),
-  ],
+function fromRaw(sym: string, name: string, raw: Record<string, QuoteRaw>, vol?: string): Entry {
+  const q = raw[sym]
+  if (!q || q.price === 0) return unavailableEntry(sym, name, vol)
+  return {
+    id: sym, name,
+    price: q.price, change: q.change, changePct: q.changePct,
+    open: q.open || q.price,
+    high: q.high || q.price,
+    low:  q.low  || q.price,
+    prev: q.prev || (q.price - q.change),
+    volume: vol,
+    intraday: genIntraday(q.price, q.change),
+  }
 }
 
-const activeTab  = ref<TabKey>(props.defaultTab ?? 'TW')
-const selected   = ref(0)
-const usingMock  = ref(false)
-const allData    = ref<Record<TabKey, Entry[]>>(JSON.parse(JSON.stringify(MOCK)))
+const activeTab       = ref<TabKey>(props.defaultTab ?? 'TW')
+const selected         = ref(0)
+const dataUnavailable = ref(false)
+const allData          = ref<Record<TabKey, Entry[]>>({ TW: [], ASIA: [], EU: [], US: [] })
 
-const _FALLBACK: Entry = { id: '', name: '', price: 0, change: 0, changePct: 0, open: 0, high: 0, low: 0, prev: 0, intraday: [] }
+const _FALLBACK: Entry = { id: '', name: '', price: 0, change: 0, changePct: 0, open: 0, high: 0, low: 0, prev: 0, intraday: [], unavailable: true }
 const currentIndices = computed(() => allData.value[activeTab.value])
 const ai = computed((): Entry => currentIndices.value[selected.value] ?? currentIndices.value[0] ?? _FALLBACK)
 
@@ -183,54 +203,17 @@ function area(prices: number[]): string {
   return `0,70 ${line(prices)} 200,70`
 }
 
-function fromRaw(sym: string, name: string, raw: Record<string, QuoteRaw>, fallback: Entry, vol?: string): Entry {
-  const q = raw[sym]
-  if (!q || q.price === 0) return fallback
-  return {
-    id: sym, name,
-    price: q.price, change: q.change, changePct: q.changePct,
-    open: q.open || q.price,
-    high: q.high || q.price,
-    low:  q.low  || q.price,
-    prev: q.prev || (q.price - q.change),
-    volume: vol,
-    intraday: genIntraday(q.price, q.change),
-  }
-}
-
 onMounted(async () => {
   try {
     const raw = await apiFetch<Record<string, QuoteRaw>>('/api/market/quotes')
-    if (Object.keys(raw).length === 0) { usingMock.value = true; return }
+    if (Object.keys(raw).length === 0) { dataUnavailable.value = true; return }
 
-    allData.value = {
-      TW: [
-        fromRaw('^TWII', '加權指數', raw, MOCK.TW[0]!, '成交額'),
-        fromRaw('^TWO',  '上櫃指數', raw, MOCK.TW[1]!),
-        MOCK.TW[2]!,
-        MOCK.TW[3]!,
-      ],
-      ASIA: [
-        fromRaw('^N225',     '日經指數',  raw, MOCK.ASIA[0]!),
-        fromRaw('^KS11',     '韓國綜合',  raw, MOCK.ASIA[1]!),
-        fromRaw('^HSI',      '香港恒生',  raw, MOCK.ASIA[2]!),
-        fromRaw('000001.SS', '上海綜合',  raw, MOCK.ASIA[3]!),
-      ],
-      EU: [
-        fromRaw('^FTSE',     '英國富時',  raw, MOCK.EU[0]!),
-        fromRaw('^GDAXI',    '德國DAX',   raw, MOCK.EU[1]!),
-        fromRaw('^FCHI',     '法國CAC40', raw, MOCK.EU[2]!),
-        fromRaw('^STOXX50E', '歐洲50',    raw, MOCK.EU[3]!),
-      ],
-      US: [
-        fromRaw('^GSPC', 'S&P 500',  raw, MOCK.US[0]!),
-        fromRaw('^DJI',  '道瓊工業', raw, MOCK.US[1]!),
-        fromRaw('^IXIC', 'NASDAQ',   raw, MOCK.US[2]!),
-        fromRaw('^RUT',  '羅素2000', raw, MOCK.US[3]!),
-      ],
-    }
+    const build = (key: TabKey): Entry[] =>
+      SYMBOL_NAMES[key].map(({ sym, name, vol }) => fromRaw(sym, name, raw, vol))
+
+    allData.value = { TW: build('TW'), ASIA: build('ASIA'), EU: build('EU'), US: build('US') }
   } catch {
-    usingMock.value = true
+    dataUnavailable.value = true
   }
 })
 </script>
@@ -286,6 +269,22 @@ onMounted(async () => {
   min-height: 240px;
 }
 
+.mop__unavailable {
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.mop__unavailable-text {
+  font-family: var(--font-cjk);
+  font-size: 13px;
+  color: var(--color-ink-3);
+  text-align: center;
+}
+.mop__unavailable-text--inline { padding: var(--space-4) 0; }
+
 .mop__list {
   width: 42%;
   flex-shrink: 0;
@@ -315,6 +314,7 @@ onMounted(async () => {
 .idx-row__nums { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .idx-row__price { font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--color-ink-1); }
 .idx-row__chg   { font-family: var(--font-body); font-size: 11px; font-weight: 600; }
+.idx-row__na    { font-family: var(--font-cjk); font-size: 12px; color: var(--color-ink-3); }
 .idx-row--up   .idx-row__chg { color: #16a34a; }
 .idx-row--down .idx-row__chg { color: #dc2626; }
 
@@ -350,13 +350,5 @@ onMounted(async () => {
   width: 100%;
   min-height: 60px;
   margin-top: var(--space-1);
-}
-
-.mop__note {
-  font-size: 10px;
-  color: var(--color-ink-4);
-  padding: 2px var(--space-3) var(--space-2);
-  font-family: var(--font-cjk);
-  flex-shrink: 0;
 }
 </style>
