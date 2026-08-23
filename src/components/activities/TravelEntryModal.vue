@@ -10,7 +10,8 @@
         <div class="travel-modal__meta-row">
           <span class="travel-modal__meta-item">城市：{{ entry.city }}</span>
           <span class="travel-modal__meta-item">洲別：{{ entry.continent }}</span>
-          <span class="travel-modal__meta-item">造訪：{{ dateRange(entry) }}</span>
+          <span class="travel-modal__meta-item">開始日期：{{ entry.startDate }}</span>
+          <span class="travel-modal__meta-item">結束日期：{{ entry.endDate || entry.startDate }}</span>
         </div>
         <div v-if="entry.photos?.length" class="modal__photos modal__photos--real">
           <img
@@ -56,11 +57,6 @@ import type { TravelEntry } from '@/types/activities'
 
 defineProps<{ entry: TravelEntry | null }>()
 defineEmits<{ close: [] }>()
-
-function dateRange(entry: TravelEntry): string {
-  if (entry.endDate && entry.endDate !== entry.startDate) return `${entry.startDate} ～ ${entry.endDate}`
-  return entry.startDate
-}
 </script>
 
 <style scoped>
