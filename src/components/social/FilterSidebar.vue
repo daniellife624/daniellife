@@ -48,8 +48,8 @@ function apply() {
 .sidebar__count { background: #ef4444; color: #fff; font-size: 12px; font-weight: 700; padding: var(--space-2); border-radius: var(--radius-sm); text-align: center; line-height: 1.4; }
 .sidebar__btn {
   width: 100%; padding: var(--space-2) 0; background: var(--color-primary); border: none;
-  border-radius: var(--radius-full); font-family: var(--font-cjk); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: opacity 0.2s; margin-top: var(--space-2);
+  color: var(--color-white); border-radius: var(--radius-full); font-family: var(--font-cjk); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.2s; margin-top: var(--space-2); -webkit-appearance: none; appearance: none;
 }
 .sidebar__btn:hover { opacity: 0.82; }
 
