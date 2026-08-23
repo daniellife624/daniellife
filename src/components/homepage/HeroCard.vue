@@ -8,7 +8,7 @@
           <h1 class="hero__name">周彥廷 <span class="hero__age">({{ age }})</span></h1>
           <p class="hero__meta">Taipei ／ 臺中海線人 ／ Male ／ <span class="hero__traits">沉穩、負責任、有企圖心</span></p>
         </div>
-        <p class="hero__subtitle">NTU ACCT ／ Financer ／ Web designer ／ Writer</p>
+        <p class="hero__subtitle">NTU ACCT ／ Information Business Consultant ／ UI/UX Design</p>
       </div>
 
       <!-- 中欄：社群帳號 -->
