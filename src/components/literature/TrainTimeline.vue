@@ -6,15 +6,22 @@
         <p class="track-section__sub">從出生到現在的文字旅程 · 點擊站牌查看作品</p>
       </div>
 
-      <div class="track-container" ref="containerEl">
+      <div
+        class="track-container"
+        :class="{ 'track-container--vertical': isMobile }"
+        ref="containerEl"
+        :style="isMobile ? { height: mobileHeight + 'px' } : {}"
+      >
         <div
           v-for="(evt, i) in timeline"
           :key="evt.id"
           class="station"
           :class="{ 'station--arrived': i < arrivedCount }"
-          :style="{ left: stationPct(i) + '%' }"
+          :style="isMobile ? { top: stationPct(i) + '%' } : { left: stationPct(i) + '%' }"
           @click="evt.workId && $emit('click-work', evt.workId)"
         >
+          <div class="station__dot"></div>
+          <div class="station__pole"></div>
           <div class="station__card">
             <div class="station__card-top">
               <span class="station__grade">{{ evt.gradeLabel }}</span>
@@ -36,22 +43,20 @@
               </div>
             </div>
           </div>
-          <div class="station__pole"></div>
-          <div class="station__dot"></div>
         </div>
 
         <div class="rail-bg"></div>
         <div class="rail-fill" ref="railFillEl"></div>
         <div class="train-loco" ref="trainEl">🚂</div>
-        <span class="rail-label rail-label--left">出生</span>
-        <span class="rail-label rail-label--right">現在</span>
+        <span class="rail-label rail-label--start">出生</span>
+        <span class="rail-label rail-label--end">現在</span>
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { TimelineEvent } from '@/types/literature'
 
 const props = defineProps<{ timeline: TimelineEvent[] }>()
@@ -63,6 +68,10 @@ const trainEl     = ref<HTMLElement | null>(null)
 const railFillEl  = ref<HTMLElement | null>(null)
 
 const arrivedCount = ref(0)
+const isMobile      = ref(false)
+const MOBILE_BREAKPOINT = 900
+const STATION_HEIGHT_PX = 190
+
 let animId: number | null = null
 let animStart: number | null = null
 let observer: IntersectionObserver | null = null
@@ -71,6 +80,12 @@ const RAIL_START = 8
 const RAIL_END   = 92
 const RAIL_RANGE = RAIL_END - RAIL_START
 const DURATION   = 3800
+
+const mobileHeight = computed(() => Math.max(400, props.timeline.length * STATION_HEIGHT_PX + 80))
+
+function updateIsMobile() {
+  isMobile.value = window.innerWidth <= MOBILE_BREAKPOINT
+}
 
 function stationPct(i: number): number {
   const n = props.timeline.length
@@ -88,16 +103,22 @@ function tick(ts: number) {
   const t = Math.min(elapsed / DURATION, 1)
   const eased = easeInOut(t)
 
-  const trainLeft = (RAIL_START - 3) + eased * (RAIL_RANGE + 5)
-  if (trainEl.value) trainEl.value.style.left = trainLeft + '%'
+  const trainPos = (RAIL_START - 3) + eased * (RAIL_RANGE + 5)
+  if (trainEl.value) {
+    if (isMobile.value) trainEl.value.style.top = trainPos + '%'
+    else trainEl.value.style.left = trainPos + '%'
+  }
 
-  const fillWidth = Math.max(0, trainLeft - RAIL_START)
-  if (railFillEl.value) railFillEl.value.style.width = fillWidth + '%'
+  const fillSize = Math.max(0, trainPos - RAIL_START)
+  if (railFillEl.value) {
+    if (isMobile.value) railFillEl.value.style.height = fillSize + '%'
+    else railFillEl.value.style.width = fillSize + '%'
+  }
 
   const n = props.timeline.length
   let count = 0
   for (let i = 0; i < n; i++) {
-    if (trainLeft >= stationPct(i) - 2) count++
+    if (trainPos >= stationPct(i) - 2) count++
     else break
   }
   if (count > arrivedCount.value) arrivedCount.value = count
@@ -110,8 +131,15 @@ function resetTrainAnimation() {
   animId = null
   animStart = null
   arrivedCount.value = 0
-  if (trainEl.value)    trainEl.value.style.left    = (RAIL_START - 3) + '%'
-  if (railFillEl.value) railFillEl.value.style.width = '0%'
+  const startPos = (RAIL_START - 3) + '%'
+  if (trainEl.value) {
+    if (isMobile.value) trainEl.value.style.top = startPos
+    else trainEl.value.style.left = startPos
+  }
+  if (railFillEl.value) {
+    if (isMobile.value) railFillEl.value.style.height = '0%'
+    else railFillEl.value.style.width = '0%'
+  }
 }
 
 function startAnimation() {
@@ -127,6 +155,9 @@ function goStation(idx: number) {
 }
 
 onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+
   observer = new IntersectionObserver(
     (entries) => {
       if (entries[0]?.isIntersecting) startAnimation()
@@ -140,6 +171,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (animId) cancelAnimationFrame(animId)
   observer?.disconnect()
+  window.removeEventListener('resize', updateIsMobile)
 })
 </script>
 
@@ -202,8 +234,8 @@ onUnmounted(() => {
   position: absolute; top: 253px;
   font-family: var(--font-cjk); font-size: 11px; color: var(--color-ink-3); letter-spacing: 0.04em;
 }
-.rail-label--left  { left: 8%; }
-.rail-label--right { right: 8%; }
+.rail-label--start { left: 8%; }
+.rail-label--end   { right: 8%; }
 
 .station {
   position: absolute; top: 50px;
@@ -249,13 +281,60 @@ onUnmounted(() => {
 .station__bar { flex: 1; height: 3px; background: #d8cfc4; border-radius: 2px; overflow: hidden; }
 .station__bar-fill { height: 100%; background: var(--color-primary); border-radius: 2px; }
 
-.station__pole { width: 1px; height: 30px; background: #c4b8a8; transition: background 0.4s; }
+.station__pole { width: 1px; height: 30px; background: #c4b8a8; transition: background 0.4s; order: 2; }
 .station--arrived .station__pole { background: #a89880; }
 
-.station__dot { width: 12px; height: 12px; border-radius: 50%; background: #e0d8cc; border: 2px solid #b8a88a; transition: background 0.4s, border-color 0.4s; z-index: 3; }
+.station__dot { width: 12px; height: 12px; border-radius: 50%; background: #e0d8cc; border: 2px solid #b8a88a; transition: background 0.4s, border-color 0.4s; z-index: 3; order: 3; }
 .station--arrived .station__dot { background: var(--color-primary); border-color: var(--color-primary); }
 
 .station--arrived:hover .station__card { border-color: var(--color-primary); }
 
-@media (max-width: 900px) { .track-container { overflow-x: auto; min-width: 760px; } }
+/* ── 手機版：垂直時間軸（鐵軌改在左側直向延伸，站牌卡片往右展開） ── */
+@media (max-width: 900px) {
+  .track-container--vertical {
+    height: auto;
+  }
+
+  .track-container--vertical .rail-bg {
+    top: 8%; bottom: 8%; left: 22px; right: auto; height: auto; width: 14px;
+    background: repeating-linear-gradient(
+      180deg, transparent 0px, transparent 14px,
+      rgba(120, 90, 58, 0.45) 14px, rgba(120, 90, 58, 0.45) 26px
+    );
+    border-top: none; border-bottom: none;
+    border-left: 2.5px solid #8a8a8a;
+    border-right: 2.5px solid #8a8a8a;
+  }
+
+  .track-container--vertical .rail-fill {
+    top: 8%; left: 22px; height: 0; width: 14px;
+    border-top: none; border-bottom: none;
+    border-left: 2.5px solid var(--color-primary);
+    border-right: 2.5px solid var(--color-primary);
+  }
+
+  .track-container--vertical .train-loco {
+    top: 5%; left: 29px;
+    transform: translateX(-50%) rotate(90deg);
+  }
+
+  .track-container--vertical .rail-label {
+    top: auto; left: 29px;
+    transform: translateX(-50%);
+  }
+  .track-container--vertical .rail-label--start { top: 2%; }
+  .track-container--vertical .rail-label--end   { top: auto; bottom: 2%; right: auto; }
+
+  .track-container--vertical .station {
+    top: 0; left: 22px;
+    transform: translateY(-50%);
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .track-container--vertical .station__dot  { order: 0; }
+  .track-container--vertical .station__pole { width: 22px; height: 1px; order: 1; }
+  .track-container--vertical .station__card { order: 2; transform: translateX(-10px); }
+  .track-container--vertical .station--arrived .station__card { transform: translateX(0); }
+}
 </style>

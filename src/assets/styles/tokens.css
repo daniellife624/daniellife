@@ -49,3 +49,9 @@
   --container-max: 1280px;
   --navbar-height: 60px;
 }
+
+@media (max-width: 767px) {
+  :root {
+    --navbar-height: 52px;
+  }
+}

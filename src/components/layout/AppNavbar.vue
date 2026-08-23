@@ -176,6 +176,6 @@ const visibleNavItems = computed(() =>
 @media (max-width: 767px) {
   .navbar__nav { display: none; }
   .navbar__hamburger { display: flex; }
-  .navbar { height: auto; min-height: var(--navbar-height); }
+  .navbar { height: var(--navbar-height); }
 }
 </style>

@@ -314,7 +314,7 @@ onUnmounted(() => { leafletMap?.remove(); leafletMap = null })
 
 @media (max-width: 1024px) {
   .travel__map { width: 100%; height: 320px; }
-  .travel__body { flex-direction: column; }
+  .travel__body { flex-direction: column; align-items: stretch; }
 }
 
 @media (max-width: 767px) {
