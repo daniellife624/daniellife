@@ -85,8 +85,8 @@ defineEmits<{ 'view-more': [] }>()
 
 .activity-card__btn {
   width: 100%; padding: var(--space-2) 0; background: var(--color-primary); border: none;
-  border-radius: var(--radius-sm); font-family: var(--font-cjk); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: opacity 0.2s;
+  color: var(--color-ink-1); border-radius: var(--radius-sm); font-family: var(--font-cjk); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.2s; -webkit-appearance: none; appearance: none;
 }
 .activity-card__btn:hover { opacity: 0.82; }
 
