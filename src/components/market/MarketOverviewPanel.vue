@@ -26,8 +26,8 @@
           class="idx-row"
           :class="{
             'idx-row--active': selected === i,
-            'idx-row--up':   idx.change > 0,
-            'idx-row--down': idx.change < 0,
+            'idx-row--up':   isUp(idx.change),
+            'idx-row--down': isDown(idx.change),
           }"
           @click="selected = i"
         >
@@ -53,10 +53,10 @@
         </template>
         <template v-else>
           <p class="mop__feat-label">{{ ai.name }}</p>
-          <p class="mop__feat-price" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
+          <p class="mop__feat-price" :class="trendClass(ai.change)">
             {{ fmtP(ai.price) }}
           </p>
-          <p class="mop__feat-chg" :class="ai.change >= 0 ? 'txt-up' : 'txt-down'">
+          <p class="mop__feat-chg" :class="trendClass(ai.change)">
             {{ ai.change >= 0 ? '▲' : '▼' }}&thinsp;{{ fmtN(Math.abs(ai.change)) }}
             ({{ Math.abs(ai.changePct).toFixed(2) }}%)
           </p>
@@ -70,13 +70,13 @@
           <svg class="mop__spark" viewBox="0 0 200 70" preserveAspectRatio="none">
             <defs>
               <linearGradient :id="`sg-${uid}`" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0.18"/>
-                <stop offset="100%" :stop-color="ai.change >= 0 ? '#16a34a' : '#dc2626'" stop-opacity="0"/>
+                <stop offset="0%"   :stop-color="trendColor(ai.change)" stop-opacity="0.18"/>
+                <stop offset="100%" :stop-color="trendColor(ai.change)" stop-opacity="0"/>
               </linearGradient>
             </defs>
             <polygon  :points="area(ai.intraday)" :fill="`url(#sg-${uid})`"/>
             <polyline :points="line(ai.intraday)" fill="none"
-              :stroke="ai.change >= 0 ? '#16a34a' : '#dc2626'"
+              :stroke="trendColor(ai.change)"
               stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
           </svg>
         </template>
@@ -188,6 +188,28 @@ function switchTab(key: TabKey) { activeTab.value = key; selected.value = 0 }
 
 function fmtP(n: number) { return n.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 function fmtN(n: number) { return n.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+
+// 顏色慣例（2026-08-23 修正）：台股/亞股（含日、韓、港、中）漲＝紅、跌＝綠；
+// 歐美慣例相反，漲＝綠、跌＝紅。isUp/isDown/trendClass/trendColor 都是「該顯示紅色
+// 還是綠色」的語意（不是「price 是否真的上漲」），已經把地區慣例吸收在裡面，
+// 呼叫端不需要再另外判斷 activeTab。之後如果要新增分頁，記得決定它屬於哪一組慣例。
+const _RED_UP_TABS: TabKey[] = ['TW', 'ASIA']
+function risenColor(change: number): 'red' | 'green' | 'flat' {
+  if (change === 0) return 'flat'
+  const risen = change > 0
+  const redUp = _RED_UP_TABS.includes(activeTab.value)
+  return risen === redUp ? 'red' : 'green'
+}
+function isUp(change: number)   { return risenColor(change) === 'red' }
+function isDown(change: number) { return risenColor(change) === 'green' }
+function trendClass(change: number) {
+  const c = risenColor(change)
+  return c === 'red' ? 'txt-down' : c === 'green' ? 'txt-up' : ''
+}
+function trendColor(change: number) {
+  const c = risenColor(change)
+  return c === 'red' ? '#dc2626' : c === 'green' ? '#16a34a' : '#6b7280'
+}
 
 function line(prices: number[]): string {
   if (prices.length < 2) return ''
@@ -315,8 +337,8 @@ onMounted(async () => {
 .idx-row__price { font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--color-ink-1); }
 .idx-row__chg   { font-family: var(--font-body); font-size: 11px; font-weight: 600; }
 .idx-row__na    { font-family: var(--font-cjk); font-size: 12px; color: var(--color-ink-3); }
-.idx-row--up   .idx-row__chg { color: #16a34a; }
-.idx-row--down .idx-row__chg { color: #dc2626; }
+.idx-row--up   .idx-row__chg { color: #dc2626; }
+.idx-row--down .idx-row__chg { color: #16a34a; }
 
 .mop__detail {
   flex: 1;

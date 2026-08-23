@@ -22,7 +22,8 @@ class TravelEntry(Base):
     country    = Column(String(100), nullable=False)
     city       = Column(String(100), nullable=False)
     continent  = Column(String(50), nullable=False)
-    visited_at = Column(Date, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date   = Column(Date, nullable=True)                # 留空視為單日行程
     journal    = Column(Text, nullable=True)
     companions = Column(Text, nullable=True)
     activities = Column(Text, nullable=True)

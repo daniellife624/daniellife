@@ -80,7 +80,8 @@ def _exp_to_out(r) -> s.ExperienceOut:
 def _travel_to_out(r) -> s.TravelEntryOut:
     return s.TravelEntryOut(
         id=r.id, country=r.country, city=r.city, continent=r.continent,
-        visitedAt=r.visited_at.isoformat() if r.visited_at else "",
+        startDate=r.start_date.isoformat() if r.start_date else "",
+        endDate=r.end_date.isoformat() if r.end_date else None,
         journal=r.journal, companions=r.companions,
         activities=r.activities, purchases=r.purchases,
         photos=_normalize_photos(r.photos),
@@ -136,7 +137,8 @@ def list_travel(db: Session = Depends(get_db)):
 def create_travel(body: s.TravelEntryIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     obj = m.TravelEntry(
         country=body.country, city=body.city, continent=body.continent,
-        visited_at=_parse_date(body.visitedAt),
+        start_date=_parse_date(body.startDate),
+        end_date=_parse_date(body.endDate) if body.endDate else None,
         journal=body.journal, companions=body.companions,
         activities=body.activities, purchases=body.purchases,
         photos=json.dumps(body.photos),
@@ -151,7 +153,8 @@ def update_travel(item_id: int, body: s.TravelEntryIn, db: Session = Depends(get
     if not obj:
         raise HTTPException(404, "Not found")
     obj.country = body.country; obj.city = body.city; obj.continent = body.continent
-    obj.visited_at = _parse_date(body.visitedAt)
+    obj.start_date = _parse_date(body.startDate)
+    obj.end_date = _parse_date(body.endDate) if body.endDate else None
     obj.journal = body.journal; obj.companions = body.companions
     obj.activities = body.activities; obj.purchases = body.purchases
     db.commit(); db.refresh(obj)

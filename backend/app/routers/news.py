@@ -2,55 +2,51 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 import requests
-from bs4 import BeautifulSoup
 
 from ..database import get_db
 from ..models.news import NewsCache
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
-ITIS_URL = "https://itisweb2.itis.org.tw/ITIS_Publish/ITISNews_New_One.asp"
-
+# 原本抓的 ITIS 頁面（ITISNews_New_One.asp）已被官網改版拿掉，「每日新聞」被收進
+# 會員專區、不再對外公開，整個頁面回 404，不是暫時性故障，救不回來（2026-08-23）。
+# 改用鉅亨網（cnyes）的公開新聞 API（沒有官方文件、不需金鑰，是他們自家前端在用的
+# 內部 API，穩定性沒有官方保證，但目前測試可正常運作）。
+#
+# cnyes 是市場別（台股/國際股市/科技…）分類，不是 ITIS 原本的產業別（電子資訊/生技
+# 醫藥/化學民生/機械金屬能源）分類，兩者無法一一對應；且前端 market.ts 的
+# TAIWAN_CATES 本來就只實際顯示 cate1（總體經濟）、cate2（電子資訊）兩類，所以只保留
+# 這兩類，改用 cnyes 最接近的分類，其餘（生技醫藥/化學民生/機械金屬能源）不再提供。
 CATEGORIES = {
     "cate1": "總體經濟",
     "cate2": "電子資訊",
-    "cate3": "生技醫藥",
-    "cate4": "化學民生",
-    "cate6": "機械金屬能源",
 }
+_CNYES_SLUGS = {
+    "cate1": "tw_macro",
+    "cate2": "tech",
+}
+_CNYES_LIST_URL = "https://api.cnyes.com/media/api/v1/newslist/category/{slug}"
+_CNYES_ARTICLE_URL = "https://news.cnyes.com/news/id/{news_id}"
 
 CACHE_TTL_HOURS = 12
 
 
-def _scrape_itis() -> list[dict]:
-    r = requests.get(ITIS_URL, verify=False, timeout=15)
-    r.encoding = "utf-8"
-    soup = BeautifulSoup(r.text, "html.parser")
-
+def _scrape_cnyes() -> list[dict]:
     results = []
-    for cate_id, cate_name in CATEGORIES.items():
-        anchor = soup.find("a", attrs={"name": cate_id})
-        if not anchor:
-            continue
-
-        # The anchor lives in a <td>; its grandparent <tr> contains all news for this category
-        td = anchor.find_parent("td")
-        tr = td.find_parent("tr") if td else None
-        if not tr:
-            continue
-
-        for a in tr.find_all("a", href=True):
-            href = a["href"]
-            text = a.get_text(strip=True)
-            if not href.startswith("http") or not text:
+    for cate_id, slug in _CNYES_SLUGS.items():
+        r = requests.get(_CNYES_LIST_URL.format(slug=slug), params={"limit": 20}, timeout=15)
+        r.raise_for_status()
+        for item in r.json().get("items", {}).get("data", []):
+            news_id = item.get("newsId")
+            title = item.get("title")
+            if not news_id or not title:
                 continue
             results.append({
                 "category": cate_id,
-                "category_name": cate_name,
-                "title": text,
-                "url": href,
+                "category_name": CATEGORIES[cate_id],
+                "title": title,
+                "url": _CNYES_ARTICLE_URL.format(news_id=news_id),
             })
-
     return results
 
 
@@ -66,7 +62,7 @@ def _is_cache_fresh(db: Session) -> bool:
 
 
 def _refresh_cache(db: Session) -> None:
-    articles = _scrape_itis()
+    articles = _scrape_cnyes()
     db.query(NewsCache).delete()
     for art in articles:
         db.add(NewsCache(category=art["category"], title=art["title"], url=art["url"]))

@@ -1,6 +1,6 @@
 import re
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 _PERIOD_RE = re.compile(r'^\d{4}/(0[1-9]|1[0-2]) – (\d{4}/(0[1-9]|1[0-2])|至今)$')
@@ -73,7 +73,8 @@ class TravelEntryOut(BaseModel):
     country: str
     city: str
     continent: str
-    visitedAt: str                      # ISO "YYYY-MM-DD"
+    startDate: str                      # ISO "YYYY-MM-DD"
+    endDate: Optional[str] = None       # None＝單日行程
     journal: Optional[str] = None
     companions: Optional[str] = None
     activities: Optional[str] = None
@@ -85,7 +86,8 @@ class TravelEntryIn(BaseModel):
     country: str
     city: str
     continent: str
-    visitedAt: str                      # ISO "YYYY-MM-DD"
+    startDate: str                      # ISO "YYYY-MM-DD"
+    endDate: Optional[str] = None       # 留空＝單日行程
     journal: Optional[str] = None
     companions: Optional[str] = None
     activities: Optional[str] = None
@@ -106,9 +108,24 @@ class TravelEntryIn(BaseModel):
             raise ValueError('「洲別」須為 Asia / Europe / Americas / Africa / Australia')
         return v
 
-    @field_validator('visitedAt')
+    @field_validator('startDate')
     @classmethod
-    def visited_at_format(cls, v: str) -> str:
+    def start_date_format(cls, v: str) -> str:
         if not _DATE_RE.match(v.strip()):
-            raise ValueError('「造訪日期」格式須為 YYYY-MM-DD')
+            raise ValueError('「開始日期」格式須為 YYYY-MM-DD')
         return v.strip()
+
+    @field_validator('endDate')
+    @classmethod
+    def end_date_format(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        if not _DATE_RE.match(v.strip()):
+            raise ValueError('「結束日期」格式須為 YYYY-MM-DD')
+        return v.strip()
+
+    @model_validator(mode='after')
+    def end_not_before_start(self) -> 'TravelEntryIn':
+        if self.endDate and self.endDate < self.startDate:
+            raise ValueError('「結束日期」不可早於「開始日期」')
+        return self

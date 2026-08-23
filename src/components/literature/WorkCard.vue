@@ -7,7 +7,7 @@
     </div>
     <div class="work-card__row">
       <span class="work-card__label">幾歲撰寫的作品</span>
-      <span class="work-card__val work-card__val--yellow">{{ work.ageWritten }}歲</span>
+      <span class="work-card__val work-card__val--yellow">{{ work.ageWritten }} 歲</span>
     </div>
     <div class="work-card__row">
       <span class="work-card__label">頒發日期</span>

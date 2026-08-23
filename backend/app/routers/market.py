@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Optional
 import httpx
@@ -7,19 +8,53 @@ from ..config import settings
 
 router = APIRouter(prefix="/market", tags=["market"])
 
-# 國際指數（亞股/歐股/美股）：Yahoo Finance v7（無官方替代來源，且常見被 429 擋，見下方 cache 註解）
-_YF_SYMBOLS = ",".join([
+# 國際指數（亞股/歐股/美股）：改用 Yahoo Finance v8 chart（單檔查詢）。
+# 原本用的 v7/finance/quote 批次報價 API，Yahoo 已改成需要 crumb/cookie 驗證，
+# 沒帶會直接回 401（不是偶爾被擋，是每次都失敗）；v8 chart 是圖表用途的端點，
+# 目前仍可匿名逐檔查詢，改用這支並平行呼叫取代原本的單一批次請求。
+_YF_SYMBOLS = [
     "^N225", "^KS11", "^HSI", "000001.SS",
     "^FTSE", "^GDAXI", "^FCHI", "^STOXX50E",
     "^GSPC", "^DJI", "^IXIC", "^RUT",
-])
-_YF_URL = f"https://query2.finance.yahoo.com/v7/finance/quote?symbols={_YF_SYMBOLS}"
+]
+_YF_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 _YF_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://finance.yahoo.com/",
 }
+
+
+async def _fetch_yahoo_chart_quote(client: httpx.AsyncClient, symbol: str) -> Optional[dict]:
+    try:
+        res = await client.get(
+            _YF_CHART_URL.format(symbol=symbol),
+            params={"interval": "1d", "range": "2d"},
+            headers=_YF_HEADERS,
+        )
+        res.raise_for_status()
+        result = res.json().get("chart", {}).get("result") or []
+        if not result:
+            return None
+        meta = result[0].get("meta", {})
+        price = meta.get("regularMarketPrice")
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+        if price is None or prev is None:
+            return None
+        quote = result[0].get("indicators", {}).get("quote", [{}])[0]
+        opens = [v for v in quote.get("open", []) if v is not None]
+        return {
+            "price": price,
+            "change": price - prev,
+            "changePct": (price - prev) / prev * 100 if prev else 0,
+            "open": opens[-1] if opens else price,
+            "high": meta.get("regularMarketDayHigh", price),
+            "low": meta.get("regularMarketDayLow", price),
+            "prev": prev,
+        }
+    except Exception:
+        return None
 
 # 台股：改用證交所官方即時行情 API（mis.twse.com.tw），不需金鑰、比 Yahoo 穩定非常多。
 # ex_ch 代碼格式為 "{tse|otc}_{指數代碼}.tw"；t00=加權指數、o00=上櫃指數、t13=電子工業類指數、
@@ -66,13 +101,16 @@ async def _fetch_twse_quotes(client: httpx.AsyncClient) -> dict:
     return out
 
 
-# Yahoo 的 v7/finance/quote 很容易被打到 429（Too Many Requests）——尤其 MarketView 一次會
-# 掛兩個 MarketOverviewPanel（TW + US），各自打一次，等於每次進站就是雙倍請求量。
-# 用簡單的記憶體 cache 降低打 Yahoo 的頻率；失敗時優先回上一次成功的真實資料（即使有點舊），
-# 而不是直接掉回寫死很久沒更新的假資料（避免出現使用者回報「數據落差很大」的情況）。
+# Yahoo 對短時間內大量併發請求非常敏感——實測同時打 12 檔（asyncio.gather）幾乎每次
+# 都會立刻被 429，且封鎖會持續一段時間（同一 IP 之後就算改成一次一檔也會繼續被擋）。
+# 因此國際指數改成「逐檔依序查詢＋間隔」，並用 lock 確保 cache 過期時，多個同時湧入的
+# request 只會有一個真的去打 Yahoo，其餘等待同一次結果，不會疊加成併發爆量。
+# 失敗時優先回上一次成功的真實資料（即使有點舊），而不是直接掉回寫死很久沒更新的假資料。
 _QUOTES_CACHE_TTL = 60  # 秒
+_YF_REQUEST_GAP = 0.3   # 秒，逐檔查詢間隔
 _quotes_cache: dict = {}
 _quotes_cache_at: float = 0.0
+_quotes_lock = asyncio.Lock()
 
 
 @router.get("/quotes")
@@ -82,35 +120,29 @@ async def get_quotes():
     if _quotes_cache and (now - _quotes_cache_at) < _QUOTES_CACHE_TTL:
         return _quotes_cache
 
-    data: dict = {}
-    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-        try:
-            data.update(await _fetch_twse_quotes(client))
-        except Exception:
-            pass  # 台股取不到就先跳過，仍嘗試國際指數
+    async with _quotes_lock:
+        now = time.time()
+        if _quotes_cache and (now - _quotes_cache_at) < _QUOTES_CACHE_TTL:
+            return _quotes_cache  # 等鎖的期間，已經有別的 request 刷新過 cache 了
 
-        try:
-            res = await client.get(_YF_URL, headers=_YF_HEADERS)
-            res.raise_for_status()
-            results: list = res.json().get("quoteResponse", {}).get("result", [])
-            for r in results:
-                data[r["symbol"]] = {
-                    "price": r.get("regularMarketPrice", 0),
-                    "change": r.get("regularMarketChange", 0),
-                    "changePct": r.get("regularMarketChangePercent", 0),
-                    "open": r.get("regularMarketOpen", 0),
-                    "high": r.get("regularMarketDayHigh", 0),
-                    "low": r.get("regularMarketDayLow", 0),
-                    "prev": r.get("regularMarketPreviousClose", 0),
-                }
-        except Exception:
-            pass  # Yahoo 擋掉（常見是 429）：只要台股那邊有拿到資料，還是回傳部分結果
+        data: dict = {}
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            try:
+                data.update(await _fetch_twse_quotes(client))
+            except Exception:
+                pass  # 台股取不到就先跳過，仍嘗試國際指數
 
-    if data:
-        _quotes_cache = data
-        _quotes_cache_at = now
-        return data
-    return _quotes_cache  # 兩邊都失敗才退回上一次成功的真實資料
+            for sym in _YF_SYMBOLS:
+                quote = await _fetch_yahoo_chart_quote(client, sym)
+                if quote is not None:
+                    data[sym] = quote
+                await asyncio.sleep(_YF_REQUEST_GAP)
+
+        if data:
+            _quotes_cache = data
+            _quotes_cache_at = now
+            return data
+        return _quotes_cache  # 兩邊都失敗才退回上一次成功的真實資料
 
 
 _PROVIDERS: dict[str, dict] = {

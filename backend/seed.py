@@ -50,9 +50,9 @@ def seed_travel():
         print("travel_entries: already seeded, skip")
         return
     db.add_all([
-        activities.TravelEntry(country="臺灣", city="台北", continent="Asia",  visited_at=date(2003, 1, 1)),
-        activities.TravelEntry(country="日本", city="東京", continent="Asia",  visited_at=date(2019, 8, 1)),
-        activities.TravelEntry(country="澳大利亞", city="雪梨", continent="Australia", visited_at=date(2023, 1, 1)),
+        activities.TravelEntry(country="臺灣", city="台北", continent="Asia",  start_date=date(2003, 1, 1)),
+        activities.TravelEntry(country="日本", city="東京", continent="Asia",  start_date=date(2019, 8, 1)),
+        activities.TravelEntry(country="澳大利亞", city="雪梨", continent="Australia", start_date=date(2023, 1, 1)),
     ])
     db.commit()
     print("travel_entries: seeded 3 rows")

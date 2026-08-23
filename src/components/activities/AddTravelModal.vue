@@ -22,8 +22,12 @@
             <input class="add-modal__input" placeholder="做了什麼有趣的事情？" v-model="form.activities" />
           </div>
           <div class="add-modal__row">
-            <div class="add-modal__icon">時</div>
-            <input class="add-modal__input" placeholder="詳細的時間點？（e.g. 2024-03-15）" v-model="form.visitedAt" />
+            <div class="add-modal__icon">始</div>
+            <input class="add-modal__input" placeholder="開始日期（e.g. 2024-03-15）" v-model="form.startDate" />
+          </div>
+          <div class="add-modal__row">
+            <div class="add-modal__icon">終</div>
+            <input class="add-modal__input" placeholder="結束日期（可留空，單日行程免填）" v-model="form.endDate" />
           </div>
           <div class="add-modal__row add-modal__row--col">
             <div class="add-modal__row add-modal__row--inner">
@@ -106,7 +110,7 @@ const CONT_ZH: Record<string, string> = {
 }
 
 const form = reactive({
-  companions: '', activities: '', visitedAt: '',
+  companions: '', activities: '', startDate: '', endDate: '',
   country: '', customCountry: '',
   city: '', customCity: '',
   purchases: '',
@@ -130,7 +134,7 @@ const cityList = computed(() => {
 watch(() => props.continent, (val) => {
   if (!val) return
   Object.assign(form, {
-    companions: '', activities: '', visitedAt: '',
+    companions: '', activities: '', startDate: '', endDate: '',
     country: '', customCountry: '',
     city: '', customCity: '',
     purchases: '',
@@ -159,7 +163,7 @@ async function submit() {
   const city    = form.city    === '__other__' ? form.customCity.trim()    : form.city
   if (!country) { submitError.value = '請選擇或輸入國家'; return }
   if (!city)    { submitError.value = '請選擇或輸入城市'; return }
-  if (!form.visitedAt.trim()) { submitError.value = '請填入造訪時間'; return }
+  if (!form.startDate.trim()) { submitError.value = '請填入開始日期'; return }
 
   submitting.value  = true
   submitError.value = ''
@@ -167,7 +171,8 @@ async function submit() {
     const entry = await createTravelEntry({
       country, city,
       continent: props.continent.key,
-      visitedAt: form.visitedAt.trim(),
+      startDate: form.startDate.trim(),
+      endDate: form.endDate.trim() || undefined,
       companions: form.companions || undefined,
       activities: form.activities || undefined,
       purchases:  form.purchases  || undefined,

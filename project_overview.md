@@ -1,6 +1,14 @@
 # Daniellife 個人網站 — 專案全覽
 
-> 最後更新：2026-06-30（GitHub Models AI 聊天室串接 + Docker 部署設定）
+> 最後更新：2026-08-23
+
+**本次更新重點**
+- 大盤報價：台股改用證交所官方 `mis.twse.com.tw` API；國際指數（亞/歐/美）改用 Yahoo Finance `v8/finance/chart`（原本的 `v7/finance/quote` 批次報價已被 Yahoo 改成需要驗證，固定回 401），並改成逐檔依序查詢＋lock，避免併發觸發 429
+- 台股/亞股報價顏色改為「漲＝紅、跌＝綠」（原本全站統一美股慣例「漲＝綠、跌＝紅」，是誤用）
+- 台灣新聞來源由 ITIS（官網已改版、原頁面 404、每日新聞收進會員專區）改為鉅亨網（cnyes）公開 API；ITIS 原有的 5 個產業別分類（cate1–cate6）縮減為 cate1（總體經濟）+ cate2（電子資訊）兩類，因為前端本來就只顯示這兩類，且 cnyes 是市場別分類，無法對應到原本的產業別分類
+- `travel_entries` 由單一 `visited_at` 改為 `start_date` + `end_date`（結束日期可留空＝單日行程）
+- 理財規劃 `MetricCards` 新增獨立「TWD 報酬率」卡（原本只是 TWD 損益卡下方的小字），現在 TWD/USD 兩側資訊對稱，共 6 張卡
+- 修正作品集 Admin 表單遺漏 `techLabel`（技術欄位標題）欄位的 bug——這個欄位一直都存在於 DB 與存檔邏輯，但表單定義被拿掉導致看不到也編輯不了，舊資料編輯存檔會把錯誤值原封不動存回去
 
 ---
 
@@ -22,10 +30,12 @@
 | 字體 | DM Serif Display / Inter / Noto Serif TC / JetBrains Mono |
 | 地圖 | Leaflet + topojson-client（世界地圖 + 訪國高亮） |
 | 後端 | FastAPI 0.111 + SQLAlchemy 2.0 + PyMySQL |
-| 資料庫 | MySQL（XAMPP MariaDB 相容）|
+| 資料庫 | 本機開發：XAMPP MySQL；正式站：Railway MySQL 8.x |
 | 認證 | **Google OAuth (GSI)** → 後端驗證 → JWT（python-jose） |
-| 檔案上傳 | python-multipart；圖片存 `backend/uploads/{section}/`；`/uploads` StaticFiles 掛載 |
-| AI 整合 | GitHub Models（`gpt-4o`，OpenAI-compatible，`POST /api/market/chat`）|
+| 檔案上傳 | python-multipart；圖片存 `backend/uploads/{section}/`；`/uploads` StaticFiles 掛載；正式站掛 Railway Persistent Volume |
+| AI 整合 | 多 provider（GitHub Models / Gemini / Groq），`POST /api/market/chat` |
+| 大盤報價 | 台股：證交所官方 `mis.twse.com.tw` API；亞/歐/美股：Yahoo Finance `v8/finance/chart`（逐檔查詢，見下方已知限制） |
+| 台灣新聞 | 鉅亨網（cnyes）公開 API（`api.cnyes.com`），非官方文件，內部 API |
 
 ### npm 套件（非標準 Vite 預設）
 
@@ -158,11 +168,13 @@ backend/
 │   ├── routers/
 │   │   ├── auth.py        # POST /auth/google（Google ID token → JWT）
 │   │   ├── homepage.py    # /api/homepage（internships 含照片、projects、certs、academic、futureplans）
-│   │   ├── activities.py  # /api/activities（experiences 含照片、travel 含照片）
+│   │   ├── activities.py  # /api/activities（experiences 含照片、travel 含照片，start_date/end_date）
 │   │   ├── social.py      # /api/social（含照片）
 │   │   ├── literature.py  # /api/literature
 │   │   ├── thesis.py      # /api/thesis
-│   │   └── finance.py     # /api/finance
+│   │   ├── finance.py     # /api/finance
+│   │   ├── market.py      # /api/market（quotes: 台股 TWSE + 國際指數 Yahoo v8 chart、AI chat）
+│   │   └── news.py        # /api/news（台灣新聞：cnyes 公開 API + DB cache）
 │   └── utils/
 │       └── auth.py        # create_token / decode_token
 ├── seed.py                # 初始 mock 資料（experiences / travel / holdings / thesis_note / social / literature）
@@ -332,10 +344,10 @@ AdminView.handleModalSave → validateForm(fd) → saveModal(fd, files)
 
 | section key | 中文 | 照片 | 期間欄位格式 |
 |-------------|------|------|-------------|
-| internships | 實習經歷 | 單張（edit + add） | YYYY/MM |
+| internships | 實習經歷 | 單張（edit + add，可調焦點） | YYYY/MM |
 | projects | 作品集 | 無 | YYYY/MM |
-| activities | 課外活動 | 多張最多 4（edit + add） | YYYY/MM |
-| social | 社會參與 | 單張（edit + add） | YYYY-MM-DD（分開欄位） |
+| activities | 課外活動 | 多張最多 2（edit + add，可調焦點） | YYYY/MM |
+| social | 社會參與 | 多張最多 2（edit + add，可調焦點） | YYYY-MM-DD（分開欄位） |
 | literature | 文學作品 | 無 | YYYY.MM |
 | papers | 論文文獻 | 無 | 年份 YYYY |
 | holdings | 持股明細 | 無 | — |
@@ -343,7 +355,7 @@ AdminView.handleModalSave → validateForm(fd) → saveModal(fd, files)
 | futureplans | 未來規劃 | 無 | — |
 | langcerts | 語言證照 | 無 | — |
 | certgroups | 財會/資訊證照 | 無 | — |
-| travel | 旅遊記錄 | 多張最多 4（edit + add） | YYYY-MM-DD |
+| travel | 旅遊記錄 | 多張最多 4（edit + add，可調焦點） | YYYY-MM-DD（start_date + end_date） |
 
 ---
 
@@ -445,7 +457,7 @@ FinanceView 擁有：holdings / summary / allocationSlices / brokerSlices（comp
 
 | 元件 | 職責 |
 |------|------|
-| `MetricCards` | 5 個彩色頂部邊框指標卡；prop `summary: PortfolioSummary` |
+| `MetricCards` | 6 個彩色頂部邊框指標卡（TWD 總市值/損益/報酬率/累積股息、USD 總市值/報酬率，TWD/USD 兩側對稱）；prop `summary: PortfolioSummary` |
 | `DonutChart` | 可複用 SVG 甜甜圈；prop `slices: { label, pct, color }[]`；接受 CSS var 字串 |
 | `HoldingsTable` | 11 欄持股明細表；prop `holdings: Holding[]`；紅綠損益 + 幣別 badge |
 
@@ -501,9 +513,9 @@ ThesisView 純組合（無自身 data state）。
 
 **`experiences`**（課外活動）：type / title / organization / period / contribution / photos（JSON）
 
-**`travel_entries`**：country / city / continent / visited_at / journal / companions / activities / purchases / photos（JSON）
+**`travel_entries`**：country / city / continent / start_date / end_date（可空＝單日行程）/ journal / companions / activities / purchases / photos（JSON，含 position 焦點）
 
-**`social_activities`**：name / organization / esg_type / sdg_numbers（JSON）/ period_from / period_to / contribution / reflection / photo_url
+**`social_activities`**：name / organization / esg_type（nullable，與 sdg_numbers 互斥擇一）/ sdg_numbers（JSON，與 esg_type 互斥）/ period_from / period_to / reflection（唯一內容欄位，取代原本的 contribution）/ youtube_url / photos（JSON，最多 2 張，含 position 焦點；已移除舊的單張 photo_url/photo_position）
 
 **`academic_milestones`**：school / major / period / gpa / rank / sort_order / facts（JSON）
 
@@ -596,16 +608,16 @@ ThesisView 純組合（無自身 data state）。
 - [x] AdminView 拆分為 AdminSidebar + AdminModal 元件
 
 **AI 聊天 + 新聞**
-- [x] `POST /api/market/chat`：GitHub Models gpt-4o，system prompt 財經助手，`GITHUB_TOKEN` 存 env
+- [x] `POST /api/market/chat`：多 provider（GitHub Models / Gemini / Groq），system prompt 財經助手
 - [x] `ChatPanel.vue`：loading 打字動畫泡泡、disabled 狀態、`white-space: pre-wrap`（換行支援）
-- [x] ITIS 台灣新聞 proxy：`GET /api/market/news?region=TAIWAN`，1hr 快取，BeautifulSoup 解析，研討會過濾
+- [x] 台灣新聞 proxy：`GET /api/news/taiwan`，鉅亨網（cnyes）公開 API，12hr DB 快取（原 ITIS 爬蟲已因官網改版失效並移除）
 - [x] `sendChatMessage` API function（`src/api/market.ts`）
 
-**部署**
-- [x] `backend/Dockerfile`：python:3.12-slim + uvicorn
-- [x] root `Dockerfile`：Node 20 build → nginx:alpine SPA
-- [x] `docker-compose.yml`：db（mysql:8.0）+ backend + frontend，健康檢查 + volume
-- [x] `nginx.conf`：`/api/*` + `/uploads/*` proxy to backend，SPA fallback
+**部署**（已改用 Vercel + Railway，Docker Compose 方案已淘汰、相關檔案已移除）
+- [x] 前端：Vercel（`vercel.json` SPA rewrite），`git push origin main` 自動部署
+- [x] 後端：Railway（`railway.toml`：`rootDirectory=backend`，`uvicorn app.main:app --host 0.0.0.0 --port $PORT`），Public Domain port 需設 8080
+- [x] 資料庫：Railway MySQL（同 project 內部網路連線）
+- [x] 圖片：Railway Persistent Volume 掛在 `/app/uploads`，redeploy 不會消失
 - [x] `requirements.txt` 補上 `python-multipart`
 
 ### ⏳ 待開發
@@ -632,8 +644,7 @@ ThesisView 純組合（無自身 data state）。
 |------|------|
 | 台灣地圖高亮 | `world-atlas` 110m 解析度下台灣面積過小可能不顯示 |
 | FRED iframe | 不加多餘 params，否則月頻指標顯示 sad face 錯誤 |
-| Yahoo Finance CORS | Browser 環境受限，MarketOverviewPanel 已有 fallback mock |
-| ITIS 台灣新聞 | CORS-restricted HTML-only，需後端 proxy（已實作） |
+| Yahoo Finance v8 chart（亞/歐/美股報價） | 官方無合作關係、非公開文件的內部端點；對短時間內大量併發請求敏感，容易觸發 429 且封鎖會持續一段時間，已改成逐檔依序查詢＋lock＋60 秒 cache＋失敗時回上一次成功資料降級，但極端情況仍可能顯示「資料暫缺」 |
+| 鉅亨網（cnyes）台灣新聞 API | 非官方文件、無 SLA 保證的內部 API，可能隨時改版失效（ITIS 原本的爬蟲就是這樣壞掉的）；分類是市場別非產業別，只保留總體經濟 + 電子資訊兩類 |
 | GitHub Models 速率限制 | Copilot Free/Pro：15 req/min，150 req/day；公開頁面需自行評估使用量 |
-| Docker 部署環境變數 | `docker-compose.yml` 讀取 `.env`，需設定 `MYSQL_ROOT_PASSWORD` + `SECRET_KEY` + `GITHUB_TOKEN` 等 |
 | `noUncheckedIndexedAccess` | `tsconfig.app.json` 有、`tsconfig.json` 無（tsc --noEmit 不報錯）|

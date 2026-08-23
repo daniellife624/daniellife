@@ -148,7 +148,7 @@
         v-if="current === 'travel'"
         title="旅遊記錄"
         :columns="['國家', '城市', '洲', '日期']"
-        :rows="travelEntries.map(t => [t.country, t.city, t.continent, t.visitedAt])"
+        :rows="travelEntries.map(t => [t.country, t.city, t.continent, t.endDate && t.endDate !== t.startDate ? `${t.startDate} ~ ${t.endDate}` : t.startDate])"
         :ids="travelEntries.map(t => t.id)"
         @add="openAdd"
         @edit="openEdit"
@@ -344,6 +344,7 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
   projects: [
     { key: 'name',       label: '名稱' },
     { key: 'type',       label: '類型（可複選）', options: ['code', 'uiux', 'finance'], multi: true },
+    { key: 'techLabel',  label: '技術欄位標題（預設「使用技術」，通常不需更改）', placeholder: '使用技術' },
     { key: 'tech',       label: '使用技術/工具' },
     { key: 'responsibility', label: '主要職責（100字以內）', type: 'textarea', placeholder: '例：負責前端全站開發與 UI/UX 設計', maxLength: 100 },
     { key: 'members',    label: '成員人數', type: 'number' },
@@ -438,7 +439,8 @@ const fieldMap: Record<SectionKey, FieldDef[]> = {
     { key: 'country',    label: '國家' },
     { key: 'city',       label: '城市' },
     { key: 'continent',  label: '洲', placeholder: 'Asia / Europe / Americas / Africa / Australia' },
-    { key: 'visitedAt',  label: '造訪日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'startDate',  label: '開始日期', placeholder: 'YYYY-MM-DD' },
+    { key: 'endDate',    label: '結束日期（可空，單日行程免填）', placeholder: 'YYYY-MM-DD' },
     { key: 'companions', label: '同行者（可空）' },
     { key: 'activities', label: '活動（可空）' },
     { key: 'purchases',  label: '購物（可空）' },
@@ -575,7 +577,7 @@ function openEdit(id: number) {
     const item = travelEntries.value.find((t) => t.id === id)!
     Object.assign(fd, {
       country: item.country, city: item.city, continent: item.continent,
-      visitedAt: item.visitedAt, companions: item.companions ?? '',
+      startDate: item.startDate, endDate: item.endDate ?? '', companions: item.companions ?? '',
       activities: item.activities ?? '', purchases: item.purchases ?? '',
       journal: item.journal ?? '',
     })
@@ -703,7 +705,9 @@ function validateForm(fd: Record<string, string>): string {
     if (!s('city').trim()) return '「城市」不可空白'
     if (!['Asia', 'Europe', 'Americas', 'Africa', 'Australia'].includes(s('continent')))
       return '「洲別」須為 Asia / Europe / Americas / Africa / Australia'
-    if (!DATE.test(s('visitedAt'))) return '「造訪日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    if (!DATE.test(s('startDate'))) return '「開始日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    if (s('endDate').trim() && !DATE.test(s('endDate'))) return '「結束日期」格式須為 YYYY-MM-DD（例：2025-07-01）'
+    if (s('endDate').trim() && s('endDate') < s('startDate')) return '「結束日期」不可早於「開始日期」'
   }
   return ''
 }
@@ -895,7 +899,7 @@ async function saveModal(
     } else if (current.value === 'travel') {
       const body = {
         country: s('country'), city: s('city'), continent: s('continent'),
-        visitedAt: s('visitedAt'),
+        startDate: s('startDate'), endDate: s('endDate').trim() || undefined,
         companions: s('companions') || undefined,
         activities: s('activities') || undefined,
         purchases: s('purchases') || undefined,

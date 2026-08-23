@@ -334,13 +334,13 @@ const filteredProjects = computed(() => {
 }
 
 .project-card__star-badge {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
 }

@@ -10,7 +10,14 @@
       <p class="metric-card__value" :class="summary.twdPnl >= 0 ? 'metric-card__value--up' : 'metric-card__value--down'">
         {{ summary.twdPnl >= 0 ? '+' : '' }}NT$ {{ summary.twdPnl.toLocaleString() }}
       </p>
-      <p class="metric-card__sub">{{ summary.twdReturnRate >= 0 ? '+' : '' }}{{ summary.twdReturnRate }}%</p>
+      <p class="metric-card__sub">&nbsp;</p>
+    </div>
+    <div class="metric-card metric-card--twd-pnl">
+      <p class="metric-card__label">TWD 報酬率</p>
+      <p class="metric-card__value" :class="summary.twdReturnRate >= 0 ? 'metric-card__value--up' : 'metric-card__value--down'">
+        {{ summary.twdReturnRate >= 0 ? '+' : '' }}{{ summary.twdReturnRate }}%
+      </p>
+      <p class="metric-card__sub">&nbsp;</p>
     </div>
     <div class="metric-card metric-card--div">
       <p class="metric-card__label">TWD 累積股息</p>
@@ -38,12 +45,13 @@ defineProps<{ summary: PortfolioSummary }>()
 </script>
 
 <style scoped>
-.metric-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-4); }
+.metric-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-4); }
 
 .metric-card { border: 1px solid var(--color-ink-4); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
 
 .metric-card--twd     { border-top: 3px solid var(--color-primary); }
 .metric-card--pnl     { border-top: 3px solid #16a34a; }
+.metric-card--twd-pnl { border-top: 3px solid #7c3aed; }
 .metric-card--div     { border-top: 3px solid var(--color-secondary); }
 .metric-card--usd     { border-top: 3px solid var(--color-tertiary); }
 .metric-card--usd-pnl { border-top: 3px solid #2563eb; }
@@ -54,5 +62,6 @@ defineProps<{ summary: PortfolioSummary }>()
 .metric-card__value--down { color: #dc2626; }
 .metric-card__sub { font-size: 12px; color: var(--color-ink-3); }
 
-@media (max-width: 900px) { .metric-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1100px) { .metric-cards { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .metric-cards { grid-template-columns: repeat(2, 1fr); } }
 </style>

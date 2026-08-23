@@ -20,7 +20,8 @@ export interface TravelEntry {
   country: string
   city: string
   continent: string
-  visitedAt: string
+  startDate: string
+  endDate?: string
   journal?: string
   companions?: string
   activities?: string
