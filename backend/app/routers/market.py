@@ -139,10 +139,12 @@ async def get_quotes():
                 await asyncio.sleep(_YF_REQUEST_GAP)
 
         if data:
-            _quotes_cache = data
+            # 用合併而非整組覆蓋：這輪抓失敗的symbol，沿用上一次成功的舊資料，
+            # 不會因為「台股成功、Yahoo 全部失敗」就把上一輪抓到的國際指數整組洗掉
+            _quotes_cache = {**_quotes_cache, **data}
             _quotes_cache_at = now
-            return data
-        return _quotes_cache  # 兩邊都失敗才退回上一次成功的真實資料
+            return _quotes_cache
+        return _quotes_cache  # 這輪全部失敗才完全退回上一次成功的真實資料
 
 
 _PROVIDERS: dict[str, dict] = {
