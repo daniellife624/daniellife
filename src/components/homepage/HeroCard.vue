@@ -6,7 +6,7 @@
       <div class="hero__left">
         <div class="hero__name-row">
           <h1 class="hero__name">周彥廷 <span class="hero__age">({{ age }})</span> <span class="hero__gender">Male</span></h1>
-          <p class="hero__meta">Taipei ／ 臺中海線人 ／ 沉穩、負責任、有企圖心</p>
+          <p class="hero__meta">Taipei ／ 臺中人 ／ 沉穩、負責任、有企圖心</p>
         </div>
         <p class="hero__subtitle">NTU ACCT ／ Information Business Consultant ／ UI/UX Design</p>
       </div>

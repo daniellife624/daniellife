@@ -1,6 +1,6 @@
 <template>
   <footer class="footer">
-    <p>© 2026 daniellife｜Designed & Developed by 周彥廷 / Yen-Ting Chou</p>
+    <p>© 2026 daniellife｜Designed & Developed by 周彥廷<span class="footer__en"> / Yen-Ting Chou</span></p>
   </footer>
 </template>
 
@@ -15,5 +15,9 @@
   padding: 8px var(--space-6);
   font-size: 12px;
   font-family: var(--font-body);
+}
+
+@media (max-width: 767px) {
+  .footer__en { display: none; }
 }
 </style>
