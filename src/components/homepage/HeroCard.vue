@@ -5,8 +5,8 @@
       <!-- 左欄：個人資訊 -->
       <div class="hero__left">
         <div class="hero__name-row">
-          <h1 class="hero__name">周彥廷 <span class="hero__age">({{ age }})</span></h1>
-          <p class="hero__meta">Taipei ／ 臺中海線人 ／ Male ／ <span class="hero__traits">沉穩、負責任、有企圖心</span></p>
+          <h1 class="hero__name">周彥廷 <span class="hero__age">({{ age }})</span> <span class="hero__gender">Male</span></h1>
+          <p class="hero__meta">Taipei ／ 臺中海線人 ／ 沉穩、負責任、有企圖心</p>
         </div>
         <p class="hero__subtitle">NTU ACCT ／ Information Business Consultant ／ UI/UX Design</p>
       </div>
@@ -108,6 +108,13 @@ if (today < new Date(today.getFullYear(), BIRTH.getMonth(), BIRTH.getDate())) ag
 .hero__age {
   font-size: 18px;
   font-weight: 400;
+}
+
+.hero__gender {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-ink-2);
 }
 
 .hero__meta {
