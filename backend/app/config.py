@@ -1,5 +1,9 @@
-from pydantic import field_validator
+import os
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+DEFAULT_SECRET_KEY = "change-me-in-production-use-32-chars-min"
 
 
 class Settings(BaseSettings):
@@ -14,7 +18,16 @@ class Settings(BaseSettings):
         return v
 
     # JWT
-    SECRET_KEY: str = "change-me-in-production-use-32-chars-min"
+    SECRET_KEY: str = Field(default=DEFAULT_SECRET_KEY, validate_default=True)
+
+    @field_validator('SECRET_KEY')
+    @classmethod
+    def check_secret_key(cls, v: str) -> str:
+        # On Railway, refuse to start with a missing/default/weak key (JWTs would be forgeable)
+        if os.getenv('RAILWAY_ENVIRONMENT') and (v == DEFAULT_SECRET_KEY or len(v) < 32):
+            raise ValueError('SECRET_KEY must be set to a random value of at least 32 chars in production')
+        return v
+
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
