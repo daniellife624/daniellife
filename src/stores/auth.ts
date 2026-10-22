@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getToken, clearToken } from '@/api/client'
+import { markNoTrack } from '@/api/visits'
 
 export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = ref(false)
@@ -16,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (payload.exp && payload.exp > now) {
           isLoggedIn.value = true
           user.value = { name: 'Daniel', email: payload.sub }
+          markNoTrack()
         } else {
           clearToken()
         }
@@ -28,6 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
   function login(userData: { name: string; email: string }) {
     isLoggedIn.value = true
     user.value = userData
+    markNoTrack()
   }
 
   function logout() {

@@ -66,6 +66,7 @@ const publicNavItems = [
 const adminNavItems = [
   { name: 'thesis',  path: '/thesis',  label: '論文統整' },
   { name: 'finance', path: '/finance', label: '理財規劃' },
+  { name: 'visitors', path: '/visitors', label: '訪客統計' },
   { name: 'admin',   path: '/admin',   label: '功能管理' },
 ]
 

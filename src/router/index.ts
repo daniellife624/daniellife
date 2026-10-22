@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { trackVisit } from '@/api/visits'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,6 +49,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/visitors',
+      name: 'visitors',
+      component: () => import('@/views/VisitorsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
@@ -80,6 +87,15 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'forbidden' }
   }
+})
+
+// 訪客記錄：只記公開頁面，登入狀態不記
+const UNTRACKED = new Set(['login', 'forbidden'])
+router.afterEach((to, from, failure) => {
+  if (failure || to.meta.requiresAuth || UNTRACKED.has(String(to.name))) return
+  if (useAuthStore().isLoggedIn) return
+  const src = typeof to.query.src === 'string' ? to.query.src : ''
+  trackVisit(to.path, src)
 })
 
 export default router
